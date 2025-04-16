@@ -8,7 +8,7 @@ A MCP (Model Context Protocol) server for interacting with GitLab API. This serv
 
 ```bash
 # Clone the repository
-git clone https://gitlab.devops.telekom.de/adit-pal.singh/gitlab-mcp.git
+git clone https://github.com/Adit-999/gitlab-mcp.git
 cd gitlab-mcp
 
 # Install dependencies using uv
@@ -19,7 +19,7 @@ uv sync
 
 ```bash
 # Clone the repository
-git clone https://gitlab.devops.telekom.de/adit-pal.singh/gitlab-mcp.git
+git clone https://github.com/Adit-999/gitlab-mcp.git
 cd gitlab-mcp
 
 # Create and activate a virtual environment
@@ -43,7 +43,7 @@ Create a `.env` file in the project root directory with these variables:
 
 ```
 GITLAB_PERSONAL_ACCESS_TOKEN=your_personal_access_token
-GITLAB_API_URL=https://gitlab.devops.telekom.de
+GITLAB_API_URL=https://gitlab.com
 ```
 
 ### Option 2: MCP Configuration
@@ -58,7 +58,7 @@ You can also configure the MCP server in your MCP JSON configuration file:
       "args": ["run", "--with", "mcp[cli],python-gitlab", "mcp", "run", "/path/to/gitlab-mcp/server.py"],
       "env": {
         "GITLAB_PERSONAL_ACCESS_TOKEN": "your_personal_access_token",
-        "GITLAB_API_URL": "https://gitlab.devops.telekom.de"
+        "GITLAB_API_URL": "https://gitlab.com"
       }
     }
   }
