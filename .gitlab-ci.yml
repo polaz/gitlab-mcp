@@ -1,0 +1,67 @@
+# GitLab CI/CD configuration for gitlab-mcp project
+# Targeting Python 3.13 with modern tooling
+
+# Security scanning - using GitLab's predefined templates
+include:
+  - template: Security/SAST.gitlab-ci.yml
+  - template: Security/Dependency-Scanning.gitlab-ci.yml
+  - template: Security/Secret-Detection.gitlab-ci.yml
+
+stages:
+  - lint
+  - test
+  - build
+
+variables:
+  PYTHON_VERSION: "3.13"
+  UV_CACHE_DIR: "${CI_PROJECT_DIR}/.cache/uv"
+  VENV_PATH: "${CI_PROJECT_DIR}/.venv"
+
+# Default settings for all jobs
+default:
+  image: python:${PYTHON_VERSION}-slim
+  cache:
+    key: "${CI_JOB_NAME}-${CI_COMMIT_REF_SLUG}"
+    paths:
+      - "${UV_CACHE_DIR}"
+      - "${VENV_PATH}"
+  before_script:
+    - pip install --upgrade pip uv
+    - uv venv ${VENV_PATH}
+    - source ${VENV_PATH}/bin/activate
+    - uv pip install -r requirements.txt
+
+# Linting stage
+ruff-lint:
+  stage: lint
+  script:
+    - uv pip install ruff
+    - ruff check .
+  allow_failure: false
+
+# Testing stage
+pytest:
+  stage: test
+  script:
+    - uv pip install pytest pytest-asyncio pytest-cov
+    - python -m pytest -v --cov=src/ --cov-report=term --cov-report=xml:coverage.xml
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+    expire_in: 1 week
+  coverage: '/TOTAL.+?(\d+\.\d+\%)/'
+  allow_failure: True
+
+# Build stage
+build:
+  stage: build
+  script:
+    - uv build
+  artifacts:
+    paths:
+      - dist/*.tar.gz
+      - dist/*.whl
+    expire_in: 1 week
+  allow_failure: false
