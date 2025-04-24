@@ -72,7 +72,7 @@ uv run mcp install server.py
 ```
 if you get errors swap:
 ```bash
- "mcp[cli]
+ "mcp[cli]"
 ```
 to:
 
