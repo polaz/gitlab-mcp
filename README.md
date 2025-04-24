@@ -69,9 +69,8 @@ You can also configure the MCP server in your MCP JSON configuration file:
 
 ```bash
 uv run mcp install server.py
-
+```
 if you get errors swap:
-
 ```bash
  "mcp[cli]
 ```
