@@ -1,137 +1,169 @@
-"""Service functions for interacting with GitLab CI/CD jobs."""
+"""Services for interacting with GitLab CI/CD jobs."""
 
-from gitlab.base import RESTObject
-from gitlab.v4.objects import ProjectJob
+from typing import Any
 
-from ..api.async_utils import to_async
-from ..api.client import gitlab_client
-from ..api.exceptions import GitLabAPIError
+from ..api.rest_client import gitlab_rest_client
 from ..schemas.jobs import (
-    GetJobInput,
-    GetJobLogsInput,
     GitLabJob,
     GitLabJobListResponse,
-    GitLabJobLog,
+    GitLabJobLogsResponse,
+    GitLabJobTokenResponse,
     ListPipelineJobsInput,
+    ListPipelineTriggerJobsInput,
+    ListProjectJobsInput,
 )
 
 
-def _map_job_to_schema(job: ProjectJob | RESTObject) -> GitLabJob:
-    """Map a GitLab job object to our schema.
+async def list_project_jobs(input_model: ListProjectJobsInput) -> GitLabJobListResponse:
+    """List jobs for a project.
 
     Args:
-        job: The GitLab job object.
+        input_model: The input parameters.
 
     Returns:
-        GitLabJob: The mapped job schema.
+        A response containing the list of jobs.
     """
-    # Extract pipeline_id safely, defaulting to 0 if not available
-    pipeline_id = (
-        job.pipeline.get("id", 0) if hasattr(job, "pipeline") and job.pipeline else 0
+    project_path = gitlab_rest_client._encode_path_parameter(input_model.project_path)
+
+    params: dict[str, Any] = {
+        "page": input_model.page,
+        "per_page": input_model.per_page,
+    }
+
+    if input_model.scope:
+        params["scope[]"] = [scope.value for scope in input_model.scope]
+
+    response = await gitlab_rest_client.get_async(
+        f"/projects/{project_path}/jobs", params=params
     )
 
-    return GitLabJob(
-        id=job.id,
-        name=job.name,
-        status=job.status,
-        stage=job.stage,
-        created_at=job.created_at,
-        started_at=job.started_at,
-        finished_at=job.finished_at,
-        duration=job.duration,
-        web_url=job.web_url,
-        pipeline_id=pipeline_id,
-        user=job.user if hasattr(job, "user") else None,
-        ref=job.ref,
+    return GitLabJobListResponse(
+        items=[GitLabJob.model_validate(job) for job in response]
     )
 
 
-def list_pipeline_jobs(input_model: ListPipelineJobsInput) -> GitLabJobListResponse:
-    """List jobs in a GitLab pipeline.
+async def list_pipeline_jobs(
+    input_model: ListPipelineJobsInput,
+) -> GitLabJobListResponse:
+    """List jobs for a pipeline.
 
     Args:
-        input_model: The input model containing project path and pipeline ID.
+        input_model: The input parameters.
 
     Returns:
-        GitLabJobListResponse: The list of jobs in the pipeline.
-
-    Raises:
-        GitLabAPIError: If the GitLab API returns an error.
+        A response containing the list of jobs.
     """
-    try:
-        client = gitlab_client._get_sync_client()
-        project = client.projects.get(input_model.project_path)
-        pipeline = project.pipelines.get(input_model.pipeline_id)
+    project_path = gitlab_rest_client._encode_path_parameter(input_model.project_path)
 
-        # Get jobs for the pipeline
-        filters = {
-            "page": input_model.page,
-            "per_page": input_model.per_page,
-        }
+    params: dict[str, Any] = {
+        "page": input_model.page,
+        "per_page": input_model.per_page,
+        "include_retried": input_model.include_retried,
+    }
 
-        jobs = pipeline.jobs.list(**filters)
+    if input_model.scope:
+        params["scope[]"] = [scope.value for scope in input_model.scope]
 
-        # Map to our schema
-        items = [_map_job_to_schema(job) for job in jobs]
+    response = await gitlab_rest_client.get_async(
+        f"/projects/{project_path}/pipelines/{input_model.pipeline_id}/jobs",
+        params=params,
+    )
 
-        return GitLabJobListResponse(
-            items=items,
-        )
-    except Exception as exc:
-        raise GitLabAPIError(str(exc)) from exc
+    return GitLabJobListResponse(
+        items=[GitLabJob.model_validate(job) for job in response]
+    )
 
 
-def get_job(input_model: GetJobInput) -> GitLabJob:
-    """Get a specific job from a GitLab project.
+async def list_pipeline_trigger_jobs(
+    input_model: ListPipelineTriggerJobsInput,
+) -> GitLabJobListResponse:
+    """List trigger jobs (bridges) for a pipeline.
 
     Args:
-        input_model: The input model containing the project path and job ID.
+        input_model: The input parameters.
 
     Returns:
-        GitLabJob: The job details.
-
-    Raises:
-        GitLabAPIError: If the GitLab API returns an error.
+        A response containing the list of trigger jobs.
     """
-    try:
-        client = gitlab_client._get_sync_client()
-        project = client.projects.get(input_model.project_path)
-        job = project.jobs.get(input_model.job_id)
+    project_path = gitlab_rest_client._encode_path_parameter(input_model.project_path)
 
-        return _map_job_to_schema(job)
-    except Exception as exc:
-        raise GitLabAPIError(str(exc)) from exc
+    params: dict[str, Any] = {
+        "page": input_model.page,
+        "per_page": input_model.per_page,
+    }
+
+    if input_model.scope:
+        params["scope[]"] = [scope.value for scope in input_model.scope]
+
+    response = await gitlab_rest_client.get_async(
+        f"/projects/{project_path}/pipelines/{input_model.pipeline_id}/bridges",
+        params=params,
+    )
+
+    return GitLabJobListResponse(
+        items=[GitLabJob.model_validate(job) for job in response]
+    )
 
 
-def get_job_logs(input_model: GetJobLogsInput) -> GitLabJobLog:
-    """Get logs from a GitLab job.
+async def get_job(input_dict: dict[str, Any]) -> GitLabJob:
+    """Get a specific job.
 
     Args:
-        input_model: The input model containing the project path and job ID.
+        input_dict: The input parameters containing project_path and job_id.
 
     Returns:
-        GitLabJobLog: The job logs.
-
-    Raises:
-        GitLabAPIError: If the GitLab API returns an error.
+        The job details.
     """
-    try:
-        client = gitlab_client._get_sync_client()
-        project = client.projects.get(input_model.project_path)
-        job = project.jobs.get(input_model.job_id)
+    project_path = gitlab_rest_client._encode_path_parameter(input_dict["project_path"])
+    job_id = input_dict["job_id"]
 
-        # Get job logs
-        logs = job.trace().decode("utf-8")
+    response = await gitlab_rest_client.get_async(
+        f"/projects/{project_path}/jobs/{job_id}"
+    )
 
-        return GitLabJobLog(
-            id=job.id,
-            content=logs,
-        )
-    except Exception as exc:
-        raise GitLabAPIError(str(exc)) from exc
+    return GitLabJob.model_validate(response)
 
 
-# Async versions of the job functions
-list_pipeline_jobs_async = to_async(list_pipeline_jobs)
-get_job_async = to_async(get_job)
-get_job_logs_async = to_async(get_job_logs)
+async def get_job_logs(input_dict: dict[str, Any]) -> GitLabJobLogsResponse:
+    """Get logs for a job.
+
+    Args:
+        input_dict: The input parameters containing project_path and job_id.
+
+    Returns:
+        The job logs.
+    """
+    project_path = gitlab_rest_client._encode_path_parameter(input_dict["project_path"])
+    job_id = input_dict["job_id"]
+
+    response = await gitlab_rest_client.get_async(
+        f"/projects/{project_path}/jobs/{job_id}/trace"
+    )
+
+    return GitLabJobLogsResponse(content=response)
+
+
+async def get_job_token_job() -> GitLabJob:
+    """Get the job that generated a job token.
+
+    This must be run from within a CI job with a CI_JOB_TOKEN.
+
+    Returns:
+        The job details.
+    """
+    response = await gitlab_rest_client.get_async("/job")
+
+    return GitLabJob.model_validate(response)
+
+
+async def get_job_token_allowed_agents() -> GitLabJobTokenResponse:
+    """Get the job and allowed GitLab agents by CI_JOB_TOKEN.
+
+    This must be run from within a CI job with a CI_JOB_TOKEN.
+
+    Returns:
+        The job token response with allowed agents.
+    """
+    response = await gitlab_rest_client.get_async("/job/allowed_agents")
+
+    return GitLabJobTokenResponse.model_validate(response)

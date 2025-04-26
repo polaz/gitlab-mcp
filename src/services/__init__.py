@@ -4,29 +4,30 @@
 # Branch services
 from .branches import (
     create_branch,
-    create_branch_async,
+    delete_branch,
+    delete_merged_branches,
+    get_branch,
     get_default_branch_ref,
-    get_default_branch_ref_async,
+    list_branches,
+    protect_branch,
+    unprotect_branch,
 )
 
 # File services
 from .files import (
+    create_file,
+    delete_file,
+    get_file_blame,
     get_file_contents,
-    get_file_contents_async,
+    get_raw_file_contents,
+    update_file,
 )
 
 # Group services (new)
 from .groups import (
-    create_group,
-    create_group_async,
-    delete_group,
-    delete_group_async,
     get_group,
-    get_group_async,
+    get_group_by_project_namespace,
     list_groups,
-    list_groups_async,
-    update_group,
-    update_group_async,
 )
 
 # Issue services

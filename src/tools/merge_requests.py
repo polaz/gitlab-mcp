@@ -1,431 +1,387 @@
-from dataclasses import dataclass
+"""Tools for interacting with GitLab merge requests."""
+
+import asyncio
 from typing import Any
 
-from ..api.exceptions import GitLabAPIError
 from ..schemas.merge_requests import (
-    ApproveMergeRequestInput,
-    CloseMergeRequestInput,
+    ApplyMultipleSuggestionsInput,
+    ApplySuggestionInput,
     CreateMergeRequestCommentInput,
     CreateMergeRequestInput,
-    GetMergeRequestDiffInput,
+    CreateMergeRequestThreadInput,
     GetMergeRequestInput,
-    ListMergeRequestCommentsInput,
     ListMergeRequestsInput,
     MergeMergeRequestInput,
-    SuggestMergeRequestCodeInput,
+    UpdateMergeRequestInput,
 )
-from ..services.merge_requests import (
-    approve_merge_request,
-    close_merge_request,
-    comment_on_merge_request,
-    create_merge_request,
-    get_merge_request,
-    get_merge_request_diff,
-    list_merge_request_changes,
-    list_merge_request_comments,
-    list_merge_requests,
-    merge_merge_request,
-    suggest_code_in_merge_request,
-)
+from ..services import merge_requests as service
 
 
-@dataclass
-class SuggestCodeRequest:
-    """Request model for suggest_code_in_merge_request_tool."""
-
-    project_path: str
-    mr_iid: int
-    file_path: str
-    line_number: int
-    suggested_code: str
-    comment: str
-    base_sha: str | None = None
-    start_sha: str | None = None
-    head_sha: str | None = None
-
-
-def create_merge_request_tool(
-    project_path: str,
-    source_branch: str,
-    target_branch: str,
-    title: str,
-    description: str | None = None,
-) -> dict[str, Any]:
-    """Create a new merge request in a GitLab repository.
+def _sanitize_user_data(data: dict) -> dict:
+    """Remove sensitive user information from response data.
 
     Args:
-        project_path: The path of the project (e.g., 'namespace/project').
-        source_branch: The source branch for the merge request.
-        target_branch: The target branch for the merge request.
-        title: The title of the merge request.
-        description: Optional description of the merge request.
+        data: Response data dictionary.
 
     Returns:
-        dict[str, Any]: Details of the created merge request.
-
-    Raises:
-        ValueError: If the GitLab API returns an error.
+        Sanitized data with sensitive user info removed.
     """
-    try:
-        # Create input model
-        input_model = CreateMergeRequestInput(
-            project_path=project_path,
-            source_branch=source_branch,
-            target_branch=target_branch,
-            title=title,
-            description=description,
-        )
+    user_fields = ["author", "reviewers", "assignees", "merge_user"]
 
-        # Call service function
-        response = create_merge_request(input_model)
+    result = data.copy()
+    for field in user_fields:
+        if field in result:
+            del result[field]
 
-        # Convert to dict
-        return response.model_dump()
-    except GitLabAPIError as exc:
-        raise ValueError(str(exc)) from exc
+    return result
 
 
-def list_merge_requests_tool(
-    project_path: str,
-    state: str | None = None,
-    labels: list[str] | None = None,
-    order_by: str | None = None,
-    sort: str | None = None,
-    page: int = 1,
-    per_page: int = 20,
-) -> dict[str, Any]:
-    """List merge requests for a GitLab project.
+async def create_merge_request_tool(input_model: dict) -> dict:
+    """Create a new merge request.
 
     Args:
-        project_path: The path of the project (e.g., 'namespace/project').
-        state: Optional filter for merge request state (opened, closed, merged, or all).
-        labels: Optional list of labels to filter merge requests by.
-        order_by: Optional field to order merge requests by.
-        sort: Optional sort direction (asc or desc).
-        page: The page number for pagination.
-        per_page: The number of items per page.
+        input_model: Dictionary containing merge request details.
 
     Returns:
-        dict[str, Any]: The list of merge requests.
-
-    Raises:
-        ValueError: If the GitLab API returns an error.
+        dict: The created merge request.
     """
-    try:
-        # Create input model
-        input_model = ListMergeRequestsInput(
-            project_path=project_path,
-            state=state,
-            labels=labels,
-            order_by=order_by,
-            sort=sort,
-            page=page,
-            per_page=per_page,
-        )
-
-        # Call service function
-        response = list_merge_requests(input_model)
-
-        # Convert to dict
-        return response.model_dump()
-    except GitLabAPIError as exc:
-        raise ValueError(str(exc)) from exc
+    validated_input = CreateMergeRequestInput.model_validate(input_model)
+    result = await service.create_merge_request(validated_input)
+    return _sanitize_user_data(result.model_dump())
 
 
-def get_merge_request_tool(project_path: str, mr_iid: int) -> dict[str, Any]:
-    """Get details for a specific GitLab merge request.
+def create_merge_request_tool_sync(input_model: dict) -> dict:
+    """Synchronous wrapper for creating a merge request.
 
     Args:
-        project_path: The path of the project (e.g., 'namespace/project').
-        mr_iid: The internal ID of the merge request within the project.
+        input_model: Dictionary containing merge request details.
 
     Returns:
-        dict[str, Any]: The merge request details.
-
-    Raises:
-        ValueError: If the GitLab API returns an error.
+        dict: The created merge request.
     """
-    try:
-        # Create input model
-        input_model = GetMergeRequestInput(
-            project_path=project_path,
-            mr_iid=mr_iid,
-        )
-
-        # Call service function
-        response = get_merge_request(input_model)
-
-        # Convert to dict
-        return response.model_dump()
-    except GitLabAPIError as exc:
-        raise ValueError(str(exc)) from exc
+    return asyncio.run(create_merge_request_tool(input_model))
 
 
-def comment_on_merge_request_tool(
-    project_path: str, mr_iid: int, body: str
-) -> dict[str, Any]:
-    """Add a comment to a GitLab merge request.
+async def list_merge_requests_tool(input_model: dict) -> dict:
+    """List merge requests for a project.
 
     Args:
-        project_path: The path of the project (e.g., 'namespace/project').
-        mr_iid: The internal ID of the merge request within the project.
-        body: The content of the comment.
+        input_model: Dictionary containing query parameters.
 
     Returns:
-        dict[str, Any]: The created comment details.
-
-    Raises:
-        ValueError: If the GitLab API returns an error.
+        dict: List of merge requests.
     """
-    try:
-        # Create input model
-        input_model = CreateMergeRequestCommentInput(
-            project_path=project_path,
-            mr_iid=mr_iid,
-            body=body,
-        )
+    validated_input = ListMergeRequestsInput.model_validate(input_model)
+    result = await service.list_merge_requests(validated_input)
 
-        # Call service function
-        response = comment_on_merge_request(input_model)
+    # Sanitize user data in each merge request
+    sanitized_items = [_sanitize_user_data(mr.model_dump()) for mr in result.items]
 
-        # Convert to dict
-        return response.model_dump()
-    except GitLabAPIError as exc:
-        raise ValueError(str(exc)) from exc
+    return {"items": sanitized_items}
 
 
-def list_merge_request_comments_tool(
-    project_path: str, mr_iid: int, page: int = 1, per_page: int = 20
-) -> dict[str, Any]:
-    """List comments for a GitLab merge request.
+def list_merge_requests_tool_sync(input_model: dict) -> dict:
+    """Synchronous wrapper for listing merge requests.
 
     Args:
-        project_path: The path of the project (e.g., 'namespace/project').
-        mr_iid: The internal ID of the merge request within the project.
-        page: The page number for pagination.
-        per_page: The number of items per page.
+        input_model: Dictionary containing query parameters.
 
     Returns:
-        dict[str, Any]: The list of comments.
-
-    Raises:
-        ValueError: If the GitLab API returns an error.
+        dict: List of merge requests.
     """
-    try:
-        # Create input model
-        input_model = ListMergeRequestCommentsInput(
-            project_path=project_path,
-            mr_iid=mr_iid,
-            page=page,
-            per_page=per_page,
-        )
-
-        # Call service function
-        response = list_merge_request_comments(input_model)
-
-        # Convert to dict
-        return response.model_dump()
-    except GitLabAPIError as exc:
-        raise ValueError(str(exc)) from exc
+    return asyncio.run(list_merge_requests_tool(input_model))
 
 
-def list_merge_request_changes_tool(project_path: str, mr_iid: int) -> dict[str, Any]:
-    """List files changed in a GitLab merge request.
+async def get_merge_request_tool(input_model: dict) -> dict:
+    """Get a specific merge request.
 
     Args:
-        project_path: The path of the project (e.g., 'namespace/project').
-        mr_iid: The internal ID of the merge request within the project.
+        input_model: Dictionary containing project_path and mr_iid.
 
     Returns:
-        dict[str, Any]: The list of changed files.
-
-    Raises:
-        ValueError: If the GitLab API returns an error.
+        dict: The merge request details.
     """
-    try:
-        # Create input model
-        input_model = GetMergeRequestInput(
-            project_path=project_path,
-            mr_iid=mr_iid,
-        )
-
-        # Call service function
-        response = list_merge_request_changes(input_model)
-
-        # Convert to dict
-        return response.model_dump()
-    except GitLabAPIError as exc:
-        raise ValueError(str(exc)) from exc
+    validated_input = GetMergeRequestInput.model_validate(input_model)
+    result = await service.get_merge_request(
+        validated_input.project_path,
+        validated_input.mr_iid,
+        validated_input.include_diverged_commits_count or False,
+        validated_input.include_rebase_in_progress or False,
+        validated_input.render_html or False,
+    )
+    return _sanitize_user_data(result.model_dump())
 
 
-def get_merge_request_diff_tool(
-    project_path: str, mr_iid: int, file_path: str
-) -> dict[str, Any]:
-    """Get the diff of a specific file in a GitLab merge request.
+def get_merge_request_tool_sync(input_model: dict) -> dict:
+    """Synchronous wrapper for getting a merge request.
 
     Args:
-        project_path: The path of the project (e.g., 'namespace/project').
-        mr_iid: The internal ID of the merge request within the project.
-        file_path: The path of the file to get the diff for.
+        input_model: Dictionary containing project_path and mr_iid.
 
     Returns:
-        dict[str, Any]: The diff of the file.
-
-    Raises:
-        ValueError: If the GitLab API returns an error.
+        dict: The merge request details.
     """
-    try:
-        # Create input model
-        input_model = GetMergeRequestDiffInput(
-            project_path=project_path,
-            mr_iid=mr_iid,
-            file_path=file_path,
-        )
-
-        # Call service function
-        response = get_merge_request_diff(input_model)
-
-        # Convert to dict
-        return response.model_dump()
-    except GitLabAPIError as exc:
-        raise ValueError(str(exc)) from exc
+    return asyncio.run(get_merge_request_tool(input_model))
 
 
-def suggest_code_in_merge_request_tool(
-    request: SuggestCodeRequest,
-) -> dict[str, Any]:
-    """Create a code suggestion comment on a GitLab merge request.
+async def update_merge_request_tool(input_model: dict) -> dict:
+    """Update a merge request.
 
     Args:
-        request: The request model containing all parameters.
+        input_model: Dictionary containing project_path, mr_iid, and fields to update.
 
     Returns:
-        dict[str, Any]: The created comment details.
-
-    Raises:
-        ValueError: If the GitLab API returns an error.
+        dict: The updated merge request details.
     """
-    try:
-        # Create input model
-        input_model = SuggestMergeRequestCodeInput(
-            project_path=request.project_path,
-            mr_iid=request.mr_iid,
-            file_path=request.file_path,
-            line_number=request.line_number,
-            suggested_code=request.suggested_code,
-            comment=request.comment,
-            base_sha=request.base_sha,
-            start_sha=request.start_sha,
-            head_sha=request.head_sha,
-        )
+    validated_input = UpdateMergeRequestInput.model_validate(input_model)
+    update_data = validated_input.model_dump(
+        exclude={"project_path", "mr_iid"}, exclude_none=True
+    )
 
-        # Call service function
-        response = suggest_code_in_merge_request(input_model)
-
-        # Convert to dict
-        return response.model_dump()
-    except GitLabAPIError as exc:
-        raise ValueError(str(exc)) from exc
+    result = await service.update_merge_request(
+        validated_input.project_path, validated_input.mr_iid, **update_data
+    )
+    return _sanitize_user_data(result.model_dump())
 
 
-def approve_merge_request_tool(
-    project_path: str, mr_iid: int, sha: str | None = None
-) -> bool:
-    """Approve a GitLab merge request.
+def update_merge_request_tool_sync(input_model: dict) -> dict:
+    """Synchronous wrapper for updating a merge request.
 
     Args:
-        project_path: The path of the project (e.g., 'namespace/project').
-        mr_iid: The internal ID of the merge request within the project.
-        sha: Optional SHA of the commit to approve.
+        input_model: Dictionary containing project_path, mr_iid, and fields to update.
 
     Returns:
-        bool: True if the merge request was approved successfully.
-
-    Raises:
-        ValueError: If the GitLab API returns an error.
+        dict: The updated merge request details.
     """
-    try:
-        # Create input model
-        input_model = ApproveMergeRequestInput(
-            project_path=project_path,
-            mr_iid=mr_iid,
-            sha=sha,
-        )
-
-        # Call service function
-        return approve_merge_request(input_model)
-    except GitLabAPIError as exc:
-        raise ValueError(str(exc)) from exc
+    return asyncio.run(update_merge_request_tool(input_model))
 
 
-def merge_merge_request_tool(
-    project_path: str,
-    mr_iid: int,
-    merge_commit_message: str | None = None,
-    should_remove_source_branch: bool = False,
-    merge_when_pipeline_succeeds: bool = False,
-    sha: str | None = None,
-) -> dict[str, Any]:
-    """Merge a GitLab merge request.
+async def delete_merge_request_tool(input_model: dict) -> dict:
+    """Delete a merge request.
 
     Args:
-        project_path: The path of the project (e.g., 'namespace/project').
-        mr_iid: The internal ID of the merge request within the project.
-        merge_commit_message: Optional custom merge commit message.
-        should_remove_source_branch: Whether to remove the source branch after merging.
-        merge_when_pipeline_succeeds: Whether to merge only when the pipeline succeeds.
-        sha: Optional SHA of the commit to merge.
+        input_model: Dictionary containing project_path and mr_iid.
 
     Returns:
-        dict[str, Any]: The merged merge request details.
-
-    Raises:
-        ValueError: If the GitLab API returns an error.
+        dict: Empty success response.
     """
-    try:
-        # Create input model
-        input_model = MergeMergeRequestInput(
-            project_path=project_path,
-            mr_iid=mr_iid,
-            merge_commit_message=merge_commit_message,
-            should_remove_source_branch=should_remove_source_branch,
-            merge_when_pipeline_succeeds=merge_when_pipeline_succeeds,
-            sha=sha,
-        )
+    project_path = input_model["project_path"]
+    mr_iid = input_model["mr_iid"]
 
-        # Call service function
-        response = merge_merge_request(input_model)
-
-        # Convert to dict
-        return response.model_dump()
-    except GitLabAPIError as exc:
-        raise ValueError(str(exc)) from exc
+    await service.delete_merge_request(project_path, mr_iid)
+    return {"success": True}
 
 
-def close_merge_request_tool(project_path: str, mr_iid: int) -> dict[str, Any]:
-    """Close a GitLab merge request.
+def delete_merge_request_tool_sync(input_model: dict) -> dict:
+    """Synchronous wrapper for deleting a merge request.
 
     Args:
-        project_path: The path of the project (e.g., 'namespace/project').
-        mr_iid: The internal ID of the merge request within the project.
+        input_model: Dictionary containing project_path and mr_iid.
 
     Returns:
-        dict[str, Any]: The closed merge request details.
-
-    Raises:
-        ValueError: If the GitLab API returns an error.
+        dict: Empty success response.
     """
-    try:
-        # Create input model
-        input_model = CloseMergeRequestInput(
-            project_path=project_path,
-            mr_iid=mr_iid,
-        )
+    return asyncio.run(delete_merge_request_tool(input_model))
 
-        # Call service function
-        response = close_merge_request(input_model)
 
-        # Convert to dict
-        return response.model_dump()
-    except GitLabAPIError as exc:
-        raise ValueError(str(exc)) from exc
+async def merge_request_changes_tool(input_model: dict) -> dict:
+    """Get the changes of a merge request.
+
+    Args:
+        input_model: Dictionary containing project_path and mr_iid.
+
+    Returns:
+        dict: The changes in the merge request.
+    """
+    project_path = input_model["project_path"]
+    mr_iid = input_model["mr_iid"]
+
+    result = await service.merge_request_changes(project_path, mr_iid)
+    return result.model_dump()
+
+
+def merge_request_changes_tool_sync(input_model: dict) -> dict:
+    """Synchronous wrapper for getting merge request changes.
+
+    Args:
+        input_model: Dictionary containing project_path and mr_iid.
+
+    Returns:
+        dict: The changes in the merge request.
+    """
+    return asyncio.run(merge_request_changes_tool(input_model))
+
+
+async def merge_merge_request_tool(input_model: dict) -> dict:
+    """Merge a merge request.
+
+    Args:
+        input_model: Dictionary containing merge details.
+
+    Returns:
+        dict: The merged merge request details.
+    """
+    validated_input = MergeMergeRequestInput.model_validate(input_model)
+
+    # Create merge options
+    merge_options = service.MergeOptions(
+        merge_commit_message=validated_input.merge_commit_message,
+        squash_commit_message=validated_input.squash_commit_message,
+        auto_merge=validated_input.auto_merge,
+        should_remove_source_branch=validated_input.should_remove_source_branch,
+        sha=validated_input.sha,
+        squash=validated_input.squash,
+    )
+
+    result = await service.merge_merge_request(
+        validated_input.project_path, validated_input.mr_iid, merge_options
+    )
+    return _sanitize_user_data(result.model_dump())
+
+
+def merge_merge_request_tool_sync(input_model: dict) -> dict:
+    """Synchronous wrapper for merging a merge request.
+
+    Args:
+        input_model: Dictionary containing merge details.
+
+    Returns:
+        dict: The merged merge request details.
+    """
+    return asyncio.run(merge_merge_request_tool(input_model))
+
+
+async def create_merge_request_comment_tool(input_model: dict) -> dict:
+    """Create a comment on a merge request.
+
+    Args:
+        input_model: Dictionary containing project_path, mr_iid, and body.
+
+    Returns:
+        dict: The created comment.
+    """
+    validated_input = CreateMergeRequestCommentInput.model_validate(input_model)
+
+    result = await service.create_merge_request_comment(
+        validated_input.project_path,
+        validated_input.mr_iid,
+        validated_input.body,
+    )
+
+    # Remove author information from the comment
+    comment_data = result.model_dump()
+    if "author" in comment_data:
+        del comment_data["author"]
+
+    return comment_data
+
+
+def create_merge_request_comment_tool_sync(input_model: dict) -> dict:
+    """Synchronous wrapper for creating a merge request comment.
+
+    Args:
+        input_model: Dictionary containing project_path, mr_iid, and body.
+
+    Returns:
+        dict: The created comment.
+    """
+    return asyncio.run(create_merge_request_comment_tool(input_model))
+
+
+async def create_merge_request_thread_tool(input_model: dict) -> dict:
+    """Create a thread on a merge request.
+
+    Args:
+        input_model: Dictionary containing project_path, mr_iid, body, and position.
+
+    Returns:
+        dict: The created thread.
+    """
+    validated_input = CreateMergeRequestThreadInput.model_validate(input_model)
+
+    result = await service.create_merge_request_thread(
+        validated_input.project_path,
+        validated_input.mr_iid,
+        validated_input.body,
+        validated_input.position,
+    )
+
+    # Sanitize author information in the thread
+    if "notes" in result and isinstance(result["notes"], list):
+        for note in result["notes"]:
+            if "author" in note:
+                del note["author"]
+
+    return result
+
+
+def create_merge_request_thread_tool_sync(input_model: dict) -> dict:
+    """Synchronous wrapper for creating a merge request thread.
+
+    Args:
+        input_model: Dictionary containing project_path, mr_iid, body, and position.
+
+    Returns:
+        dict: The created thread.
+    """
+    return asyncio.run(create_merge_request_thread_tool(input_model))
+
+
+async def apply_suggestion_tool(input_model: dict) -> dict:
+    """Apply a suggestion to a merge request.
+
+    Args:
+        input_model: Dictionary containing suggestion_id and commit_message.
+
+    Returns:
+        dict: The suggestion details.
+    """
+    validated_input = ApplySuggestionInput.model_validate(input_model)
+
+    result = await service.apply_suggestion(
+        validated_input.id,
+        validated_input.commit_message,
+    )
+    return result.model_dump()
+
+
+def apply_suggestion_tool_sync(input_model: dict) -> dict:
+    """Synchronous wrapper for applying a suggestion.
+
+    Args:
+        input_model: Dictionary containing suggestion_id and commit_message.
+
+    Returns:
+        dict: The suggestion details.
+    """
+    return asyncio.run(apply_suggestion_tool(input_model))
+
+
+async def apply_multiple_suggestions_tool(input_model: dict) -> list[dict[str, Any]]:
+    """Apply multiple suggestions to a merge request.
+
+    Args:
+        input_model: Dictionary containing ids and commit_message.
+
+    Returns:
+        list[dict[str, Any]]: The suggestions details.
+    """
+    validated_input = ApplyMultipleSuggestionsInput.model_validate(input_model)
+
+    results = await service.apply_multiple_suggestions(
+        validated_input.ids,
+        validated_input.commit_message,
+    )
+    return [result.model_dump() for result in results]
+
+
+def apply_multiple_suggestions_tool_sync(input_model: dict) -> list[dict[str, Any]]:
+    """Synchronous wrapper for applying multiple suggestions.
+
+    Args:
+        input_model: Dictionary containing ids and commit_message.
+
+    Returns:
+        list[dict[str, Any]]: The suggestions details.
+    """
+    return asyncio.run(apply_multiple_suggestions_tool(input_model))

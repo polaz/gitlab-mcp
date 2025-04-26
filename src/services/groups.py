@@ -1,204 +1,102 @@
-from typing import Any
+"""Service functions for interacting with GitLab groups using the REST API."""
 
-from ..api.async_utils import to_async
-from ..api.client import gitlab_client
-from ..api.exceptions import GitLabAPIError
-from ..schemas.filters import GroupFilterParams
-from ..schemas.groups import (
-    CreateGroupInput,
-    DeleteGroupInput,
+from src.api.rest_client import gitlab_rest_client
+from src.schemas.groups import (
+    GetGroupByProjectNamespaceInput,
     GetGroupInput,
     GitLabGroup,
     GitLabGroupListResponse,
     ListGroupsInput,
-    UpdateGroupInput,
 )
 
 
-def _map_group_to_schema(group: Any) -> GitLabGroup:
-    """Map a GitLab group object to our schema.
-
-    Args:
-        group: The GitLab group object.
-
-    Returns:
-        GitLabGroup: The mapped group schema.
-    """
-    return GitLabGroup(
-        id=group.id,
-        name=group.name,
-        path=group.path,
-        description=group.description,
-        visibility=group.visibility,
-        web_url=group.web_url,
-        parent_id=group.parent_id if hasattr(group, "parent_id") else None,
-    )
-
-
-def list_groups(input_model: ListGroupsInput) -> GitLabGroupListResponse:
-    """List GitLab groups.
+async def list_groups(input_model: ListGroupsInput) -> GitLabGroupListResponse:
+    """List GitLab groups using the REST API.
 
     Args:
         input_model: The input model containing filter parameters.
 
     Returns:
-        GitLabGroupListResponse: The list of groups.
+        GitLabGroupListResponse: The paginated list of groups.
 
     Raises:
-        GitLabAPIError: If the GitLab API returns an error.
+        GitLabAPIError: If retrieving the groups fails.
     """
-    try:
-        client = gitlab_client._get_sync_client()
+    # Prepare query parameters
+    params = {}
 
-        # Convert input model to filter params
-        filter_params = GroupFilterParams(
-            page=input_model.page,
-            per_page=input_model.per_page,
-            search=input_model.search,
-            owned=input_model.owned,
-            min_access_level=input_model.min_access_level.value
-            if input_model.min_access_level
-            else None,
-            top_level_only=input_model.top_level_only,
-        )
+    # Add pagination parameters
+    params["page"] = input_model.page
+    params["per_page"] = input_model.per_page
 
-        # Convert to dict, excluding None values
-        filters = filter_params.model_dump(exclude_none=True)
+    # Add filtering parameters
+    if input_model.search:
+        params["search"] = input_model.search
+    if input_model.owned:
+        params["owned"] = "true"
+    if input_model.min_access_level:
+        params["min_access_level"] = str(input_model.min_access_level.value)
+    if input_model.top_level_only:
+        params["top_level_only"] = "true"
 
-        # Get the groups
-        groups = client.groups.list(**filters)
+    # Make the API call
+    response_data = await gitlab_rest_client.get_async("/groups", params=params)
 
-        # Map to our schema
-        items = [
-            _map_group_to_schema(group)
-            for group in groups
-            if hasattr(group, "attributes")
-        ]
+    # Get total count - in a real implementation we would use the headers
+    # For now, just use the length of the response
+    total_count = len(response_data)
 
-        return GitLabGroupListResponse(
-            count=len(items),
-            items=items,
-        )
-    except Exception as exc:
-        raise GitLabAPIError(str(exc)) from exc
+    # Parse the response into our schema
+    items = [GitLabGroup.model_validate(group) for group in response_data]
+
+    return GitLabGroupListResponse(
+        items=items,
+        count=total_count,
+    )
 
 
-def get_group(input_model: GetGroupInput) -> GitLabGroup:
-    """Get a specific GitLab group.
+async def get_group(input_model: GetGroupInput) -> GitLabGroup:
+    """Get a specific GitLab group using the REST API.
 
     Args:
         input_model: The input model containing the group ID or path.
 
     Returns:
-        GitLabGroup: The group details.
+        GitLabGroup: The requested group.
 
     Raises:
-        GitLabAPIError: If the GitLab API returns an error.
+        GitLabAPIError: If retrieving the group fails.
     """
-    try:
-        client = gitlab_client._get_sync_client()
-        group = client.groups.get(input_model.group_id)
+    # Encode the group ID/path
+    group_id = gitlab_rest_client._encode_path_parameter(input_model.group_id)
 
-        # Map to our schema
-        return _map_group_to_schema(group)
-    except Exception as exc:
-        raise GitLabAPIError(str(exc)) from exc
+    # Make the API call
+    response = await gitlab_rest_client.get_async(f"/groups/{group_id}")
+
+    # Parse the response into our schema
+    return GitLabGroup.model_validate(response)
 
 
-def create_group(input_model: CreateGroupInput) -> GitLabGroup:
-    """Create a new GitLab group.
+async def get_group_by_project_namespace(
+    input_model: GetGroupByProjectNamespaceInput,
+) -> GitLabGroup:
+    """Get a GitLab group based on a project namespace using the REST API.
 
     Args:
-        input_model: The input model containing group details.
+        input_model: The input model containing the project namespace.
 
     Returns:
-        GitLabGroup: The created group details.
+        GitLabGroup: The requested group.
 
     Raises:
-        GitLabAPIError: If the GitLab API returns an error.
+        GitLabAPIError: If retrieving the group fails.
     """
-    try:
-        client = gitlab_client._get_sync_client()
+    # In GitLab, the project namespace is the group path or subgroup path
+    # We'll encode it as a path parameter
+    namespace = gitlab_rest_client._encode_path_parameter(input_model.project_namespace)
 
-        # Create the group
-        group = client.groups.create(
-            {
-                "name": input_model.name,
-                "path": input_model.path,
-                "description": input_model.description,
-                "visibility": input_model.visibility.value,
-                "parent_id": input_model.parent_id,
-                "auto_devops_enabled": input_model.auto_devops_enabled,
-            }
-        )
+    # Make the API call
+    response = await gitlab_rest_client.get_async(f"/groups/{namespace}")
 
-        # Map to our schema
-        return _map_group_to_schema(group)
-    except Exception as exc:
-        raise GitLabAPIError(str(exc)) from exc
-
-
-def update_group(input_model: UpdateGroupInput) -> GitLabGroup:
-    """Update a GitLab group.
-
-    Args:
-        input_model: The input model containing updated group details.
-
-    Returns:
-        GitLabGroup: The updated group details.
-
-    Raises:
-        GitLabAPIError: If the GitLab API returns an error.
-    """
-    try:
-        client = gitlab_client._get_sync_client()
-        group = client.groups.get(input_model.group_id)
-
-        # Build update data
-        data = {}
-        if input_model.name is not None:
-            data["name"] = input_model.name
-        if input_model.path is not None:
-            data["path"] = input_model.path
-        if input_model.description is not None:
-            data["description"] = input_model.description
-        if input_model.visibility is not None:
-            data["visibility"] = input_model.visibility.value
-
-        # Update the group
-        group.update(data)
-
-        # Map to our schema
-        return _map_group_to_schema(group)
-    except Exception as exc:
-        raise GitLabAPIError(str(exc)) from exc
-
-
-def delete_group(input_model: DeleteGroupInput) -> bool:
-    """Delete a GitLab group.
-
-    Args:
-        input_model: The input model containing the group ID or path.
-
-    Returns:
-        bool: True if the group was deleted successfully.
-
-    Raises:
-        GitLabAPIError: If the GitLab API returns an error.
-    """
-    try:
-        client = gitlab_client._get_sync_client()
-        group = client.groups.get(input_model.group_id)
-        group.delete()
-    except Exception as exc:
-        raise GitLabAPIError(str(exc)) from exc
-    else:
-        return True
-
-
-# Async versions of the functions
-list_groups_async = to_async(list_groups)
-get_group_async = to_async(get_group)
-create_group_async = to_async(create_group)
-update_group_async = to_async(update_group)
-delete_group_async = to_async(delete_group)
+    # Parse the response into our schema
+    return GitLabGroup.model_validate(response)
