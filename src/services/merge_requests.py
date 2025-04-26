@@ -1,529 +1,325 @@
-from gitlab.base import RESTObject
-from gitlab.v4.objects import MergeRequest, ProjectMergeRequestNote
+"""Services for interacting with GitLab merge requests."""
 
-from ..api.async_utils import to_async
-from ..api.client import gitlab_client
-from ..api.exceptions import GitLabAPIError
-from ..schemas.filters import MergeRequestFilterParams
+from dataclasses import dataclass
+from typing import Any, cast
+
+from ..api.rest_client import gitlab_rest_client
 from ..schemas.merge_requests import (
-    ApproveMergeRequestInput,
-    CloseMergeRequestInput,
-    CreateMergeRequestCommentInput,
+    AcceptedMergeRequest,
     CreateMergeRequestInput,
-    GetMergeRequestDiffInput,
-    GetMergeRequestInput,
     GitLabComment,
-    GitLabCommentListResponse,
     GitLabMergeRequest,
-    GitLabMergeRequestChangesResponse,
-    GitLabMergeRequestDiffResponse,
     GitLabMergeRequestListResponse,
-    ListMergeRequestCommentsInput,
     ListMergeRequestsInput,
-    MergeMergeRequestInput,
-    SuggestMergeRequestCodeInput,
+    MergeRequestChanges,
+    MergeRequestSuggestion,
 )
 
 
-def _map_mr_to_schema(mr: MergeRequest | RESTObject) -> GitLabMergeRequest:
-    """Map a GitLab merge request object to our schema.
+@dataclass
+class MergeOptions:
+    """Options for merging a merge request."""
 
-    Args:
-        mr: The GitLab merge request object.
-
-    Returns:
-        GitLabMergeRequest: The mapped merge request schema.
-    """
-    return GitLabMergeRequest(
-        id=mr.id,
-        iid=mr.iid,
-        title=mr.title,
-        description=mr.description,
-        web_url=mr.web_url,
-    )
+    merge_commit_message: str | None = None
+    squash_commit_message: str | None = None
+    auto_merge: bool | None = None
+    should_remove_source_branch: bool | None = None
+    sha: str | None = None
+    squash: bool | None = None
 
 
-def _map_comment_to_schema(
-    comment: ProjectMergeRequestNote | RESTObject,
-) -> GitLabComment:
-    """Map a GitLab comment object to our schema.
-
-    Args:
-        comment: The GitLab comment object, either a ProjectMergeRequestNote or RESTObject.
-
-    Returns:
-        GitLabComment: The mapped comment schema.
-    """
-    return GitLabComment(
-        id=comment.id,
-        body=comment.body,
-        author={
-            "id": comment.author["id"],
-            "name": comment.author["name"],
-            "username": comment.author["username"],
-        },
-        created_at=comment.created_at,
-        updated_at=comment.updated_at if hasattr(comment, "updated_at") else None,
-    )
-
-
-def _format_suggestion_body(suggested_code: str, comment: str) -> str:
-    """Format a suggestion body according to GitLab's syntax.
-
-    Args:
-        suggested_code: The suggested code.
-        comment: The comment explaining the suggestion.
-
-    Returns:
-        str: The formatted suggestion body.
-    """
-    # Format according to GitLab's suggestion syntax
-    return f"{comment}\n\n```suggestion\n{suggested_code}\n```"
-
-
-def _raise_file_not_found_error(file_path: str, mr_iid: int) -> None:
-    """Helper function to raise file not found error.
-
-    Args:
-        file_path: The path of the file that was not found.
-        mr_iid: The merge request IID.
-
-    Raises:
-        GitLabAPIError: Always raised with appropriate message.
-    """
-    error_message = "File not found in merge request"
-    raise GitLabAPIError(error_message)
-
-
-def create_merge_request(input_model: CreateMergeRequestInput) -> GitLabMergeRequest:
-    """Create a merge request in a GitLab repository.
+async def create_merge_request(
+    input_model: CreateMergeRequestInput,
+) -> GitLabMergeRequest:
+    """Create a new merge request.
 
     Args:
         input_model: The input model containing merge request details.
 
     Returns:
         GitLabMergeRequest: The created merge request details.
-
-    Raises:
-        GitLabAPIError: If the GitLab API returns an error.
     """
-    try:
-        client = gitlab_client._get_sync_client()
-        project = client.projects.get(input_model.project_path)
+    project_path = gitlab_rest_client._encode_path_parameter(input_model.project_path)
 
-        # Create the merge request
-        mr = project.mergerequests.create(
-            {
-                "source_branch": input_model.source_branch,
-                "target_branch": input_model.target_branch,
-                "title": input_model.title,
-                "description": input_model.description,
-            }
-        )
+    payload = input_model.model_dump(exclude={"project_path"})
 
-        # Map to our schema
-        return _map_mr_to_schema(mr)
-    except Exception as exc:
-        raise GitLabAPIError(str(exc)) from exc
+    response = await gitlab_rest_client.post_async(
+        f"/projects/{project_path}/merge_requests", json_data=payload
+    )
+
+    return GitLabMergeRequest.model_validate(response)
 
 
-def list_merge_requests(
+async def list_merge_requests(
     input_model: ListMergeRequestsInput,
 ) -> GitLabMergeRequestListResponse:
-    """List merge requests in a GitLab repository.
+    """List merge requests for a project.
 
     Args:
-        input_model: The input model containing filter parameters.
+        input_model: The input model containing query parameters.
 
     Returns:
-        GitLabMergeRequestListResponse: The list of merge requests.
-
-    Raises:
-        GitLabAPIError: If the GitLab API returns an error.
+        GitLabMergeRequestListResponse: A list of merge requests.
     """
-    try:
-        client = gitlab_client._get_sync_client()
-        project = client.projects.get(input_model.project_path)
+    project_path = gitlab_rest_client._encode_path_parameter(input_model.project_path)
 
-        # Convert input model to filter params
-        filter_params = MergeRequestFilterParams(
-            page=input_model.page,
-            per_page=input_model.per_page,
-            state=input_model.state,
-            labels=input_model.labels,
-            order_by=input_model.order_by,
-            sort=input_model.sort,
-        )
+    params = input_model.model_dump(
+        exclude={"project_path"},
+        exclude_none=True,
+    )
 
-        # Convert to dict, excluding None values
-        filters = filter_params.model_dump(exclude_none=True)
+    # Convert state enum to string if present
+    if "state" in params and params["state"] is not None:
+        params["state"] = params["state"].value
 
-        # Get the merge requests
-        mrs = project.mergerequests.list(**filters)
+    # Convert labels list to comma-separated string if present
+    if "labels" in params and params["labels"] is not None:
+        params["labels"] = ",".join(params["labels"])
 
-        # Map to our schema
-        items = [_map_mr_to_schema(mr) for mr in mrs if hasattr(mr, "attributes")]
+    response = await gitlab_rest_client.get_async(
+        f"/projects/{project_path}/merge_requests",
+        params=params,
+    )
 
-        return GitLabMergeRequestListResponse(
-            items=items,
-        )
-    except Exception as exc:
-        raise GitLabAPIError(str(exc)) from exc
+    return GitLabMergeRequestListResponse(
+        items=[GitLabMergeRequest.model_validate(mr) for mr in response]
+    )
 
 
-def get_merge_request(input_model: GetMergeRequestInput) -> GitLabMergeRequest:
-    """Get a specific merge request from a GitLab repository.
+async def get_merge_request(
+    project_path: str,
+    mr_iid: int,
+    include_diverged_commits_count: bool = False,
+    include_rebase_in_progress: bool = False,
+    render_html: bool = False,
+) -> GitLabMergeRequest:
+    """Get a specific merge request.
 
     Args:
-        input_model: The input model containing project path and merge request IID.
+        project_path: The path of the project.
+        mr_iid: The internal ID of the merge request.
+        include_diverged_commits_count: Whether to include the count of diverged commits.
+        include_rebase_in_progress: Whether to include rebase in progress status.
+        render_html: Whether to render HTML for title and description.
 
     Returns:
         GitLabMergeRequest: The merge request details.
-
-    Raises:
-        GitLabAPIError: If the GitLab API returns an error.
     """
-    try:
-        client = gitlab_client._get_sync_client()
-        project = client.projects.get(input_model.project_path)
-        mr = project.mergerequests.get(input_model.mr_iid)
+    project_path_encoded = gitlab_rest_client._encode_path_parameter(project_path)
 
-        # Map to our schema
-        return _map_mr_to_schema(mr)
-    except Exception as exc:
-        raise GitLabAPIError(str(exc)) from exc
+    params = {
+        "include_diverged_commits_count": include_diverged_commits_count,
+        "include_rebase_in_progress": include_rebase_in_progress,
+        "render_html": render_html,
+    }
+
+    response = await gitlab_rest_client.get_async(
+        f"/projects/{project_path_encoded}/merge_requests/{mr_iid}",
+        params=params,
+    )
+
+    return GitLabMergeRequest.model_validate(response)
 
 
-def comment_on_merge_request(
-    input_model: CreateMergeRequestCommentInput,
-) -> GitLabComment:
-    """Add a comment to a GitLab merge request.
+async def update_merge_request(
+    project_path: str, mr_iid: int, **kwargs: Any
+) -> GitLabMergeRequest:
+    """Update a merge request.
 
     Args:
-        input_model: The input model containing project path, merge request IID, and comment body.
+        project_path: The path of the project.
+        mr_iid: The internal ID of the merge request.
+        **kwargs: Fields to update.
 
     Returns:
-        GitLabComment: The created comment details.
-
-    Raises:
-        GitLabAPIError: If the GitLab API returns an error.
+        GitLabMergeRequest: The updated merge request details.
     """
-    try:
-        client = gitlab_client._get_sync_client()
-        project = client.projects.get(input_model.project_path)
-        mr = project.mergerequests.get(input_model.mr_iid)
+    project_path_encoded = gitlab_rest_client._encode_path_parameter(project_path)
 
-        # Create the comment
-        comment = mr.notes.create({"body": input_model.body})
+    # Convert labels list to comma-separated string if present
+    if "labels" in kwargs and kwargs["labels"] is not None:
+        kwargs["labels"] = ",".join(kwargs["labels"])
 
-        # Map to our schema
-        return _map_comment_to_schema(comment)
-    except Exception as exc:
-        raise GitLabAPIError(str(exc)) from exc
+    # Handle add/remove labels lists
+    if "add_labels" in kwargs and kwargs["add_labels"] is not None:
+        kwargs["add_labels"] = ",".join(kwargs["add_labels"])
+    if "remove_labels" in kwargs and kwargs["remove_labels"] is not None:
+        kwargs["remove_labels"] = ",".join(kwargs["remove_labels"])
+
+    response = await gitlab_rest_client.put_async(
+        f"/projects/{project_path_encoded}/merge_requests/{mr_iid}",
+        json_data=kwargs,
+    )
+
+    return GitLabMergeRequest.model_validate(response)
 
 
-def list_merge_request_comments(
-    input_model: ListMergeRequestCommentsInput,
-) -> GitLabCommentListResponse:
-    """List comments on a GitLab merge request.
+async def delete_merge_request(project_path: str, mr_iid: int) -> None:
+    """Delete a merge request.
 
     Args:
-        input_model: The input model containing project path, merge request IID, and pagination parameters.
-
-    Returns:
-        GitLabCommentListResponse: The list of comments.
-
-    Raises:
-        GitLabAPIError: If the GitLab API returns an error.
+        project_path: The path of the project.
+        mr_iid: The internal ID of the merge request.
     """
-    try:
-        client = gitlab_client._get_sync_client()
-        project = client.projects.get(input_model.project_path)
-        mr = project.mergerequests.get(input_model.mr_iid)
+    project_path_encoded = gitlab_rest_client._encode_path_parameter(project_path)
 
-        # Get the comments
-        comments = mr.notes.list(
-            page=input_model.page,
-            per_page=input_model.per_page,
-        )
-
-        # Map to our schema
-        items = [_map_comment_to_schema(comment) for comment in comments]
-
-        return GitLabCommentListResponse(
-            count=len(items),
-            items=items,
-        )
-    except Exception as exc:
-        raise GitLabAPIError(str(exc)) from exc
+    await gitlab_rest_client.delete_async(
+        f"/projects/{project_path_encoded}/merge_requests/{mr_iid}"
+    )
 
 
-def list_merge_request_changes(
-    input_model: GetMergeRequestInput,
-) -> GitLabMergeRequestChangesResponse:
-    """List files changed in a GitLab merge request.
+async def merge_request_changes(project_path: str, mr_iid: int) -> MergeRequestChanges:
+    """Get the changes of a merge request.
 
     Args:
-        input_model: The input model containing project path and merge request IID.
+        project_path: The path of the project.
+        mr_iid: The internal ID of the merge request.
 
     Returns:
-        GitLabMergeRequestChangesResponse: The list of changed files.
-
-    Raises:
-        GitLabAPIError: If the GitLab API returns an error.
+        MergeRequestChanges: The changes in the merge request.
     """
-    try:
-        client = gitlab_client._get_sync_client()
-        project = client.projects.get(input_model.project_path)
-        mr = project.mergerequests.get(input_model.mr_iid)
+    project_path_encoded = gitlab_rest_client._encode_path_parameter(project_path)
 
-        # Get the changes
-        changes_data = mr.changes()
+    response = await gitlab_rest_client.get_async(
+        f"/projects/{project_path_encoded}/merge_requests/{mr_iid}/changes"
+    )
 
-        # Extract changes data based on the return type
-        if isinstance(changes_data, dict):
-            changes_list = changes_data.get("changes", [])
-        else:
-            # Assuming it's a response object with json method
-            changes_list = changes_data.json().get("changes", [])
-
-        # Map to our schema
-        return GitLabMergeRequestChangesResponse(
-            mr_iid=input_model.mr_iid,
-            files=changes_list,
-            total_count=len(changes_list),
-        )
-    except Exception as exc:
-        raise GitLabAPIError(str(exc)) from exc
+    return MergeRequestChanges.model_validate(response)
 
 
-def get_merge_request_diff(
-    input_model: GetMergeRequestDiffInput,
-) -> GitLabMergeRequestDiffResponse:
-    """Get the diff of a specific file in a GitLab merge request.
-
-    Args:
-        input_model: The input model containing project path, merge request IID, and file path.
-
-    Returns:
-        GitLabMergeRequestDiffResponse: The diff of the file.
-
-    Raises:
-        GitLabAPIError: If the GitLab API returns an error.
-    """
-    try:
-        client = gitlab_client._get_sync_client()
-        project = client.projects.get(input_model.project_path)
-        mr = project.mergerequests.get(input_model.mr_iid)
-
-        # Get the changes
-        changes_data = mr.changes()
-
-        # Extract changes data based on the return type
-        if isinstance(changes_data, dict):
-            changes_list = changes_data.get("changes", [])
-        else:
-            # Assuming it's a requests.Response object
-            changes_list = changes_data.json().get("changes", [])
-
-        # Find the specific file
-        file_diff = {}
-        for change in changes_list:
-            if (
-                change["new_path"] == input_model.file_path
-                or change["old_path"] == input_model.file_path
-            ):
-                file_diff = change
-                break
-
-        if not file_diff:
-            _raise_file_not_found_error(input_model.file_path, input_model.mr_iid)
-
-        # Map to our schema
-        return GitLabMergeRequestDiffResponse(
-            mr_iid=input_model.mr_iid,
-            file_path=input_model.file_path,
-            diff=file_diff["diff"],
-            old_path=file_diff["old_path"],
-            new_path=file_diff["new_path"],
-            renamed_file=file_diff.get("renamed_file", False),
-            deleted_file=file_diff.get("deleted_file", False),
-            new_file=file_diff.get("new_file", False),
-            content=None,  # We don't have the content in the diff
-        )
-    except Exception as exc:
-        raise GitLabAPIError(str(exc)) from exc
-
-
-def suggest_code_in_merge_request(
-    input_model: SuggestMergeRequestCodeInput,
-) -> GitLabComment:
-    """Create a code suggestion comment on a GitLab merge request.
-
-    Args:
-        input_model: The input model containing suggestion details.
-
-    Returns:
-        GitLabComment: The created comment details.
-
-    Raises:
-        GitLabAPIError: If the GitLab API returns an error.
-    """
-    try:
-        client = gitlab_client._get_sync_client()
-        project = client.projects.get(input_model.project_path)
-        mr = project.mergerequests.get(input_model.mr_iid)
-
-        # Format the suggestion body
-        body = _format_suggestion_body(input_model.suggested_code, input_model.comment)
-
-        # Create position data
-        position_data = {
-            "position_type": "text",
-            "base_sha": input_model.base_sha,
-            "start_sha": input_model.start_sha,
-            "head_sha": input_model.head_sha,
-            "new_path": input_model.file_path,
-            "new_line": input_model.line_number,
-        }
-
-        # Create the comment with suggestion
-        comment = mr.discussions.create(
-            {
-                "body": body,
-                "position": position_data,
-            }
-        )
-
-        # Map to our schema
-        return GitLabComment(
-            id=comment.id,
-            body=body,
-            author={
-                "id": comment.attributes["author"]["id"],
-                "name": comment.attributes["author"]["name"],
-                "username": comment.attributes["author"]["username"],
-            },
-            created_at=comment.attributes["created_at"],
-            updated_at=None,
-        )
-    except Exception as exc:
-        raise GitLabAPIError(str(exc)) from exc
-
-
-def approve_merge_request(input_model: ApproveMergeRequestInput) -> bool:
-    """Approve a merge request.
-
-    Args:
-        input_model: The input model containing the project path, merge request IID, and optional SHA.
-
-    Returns:
-        bool: True if the merge request was approved successfully.
-
-    Raises:
-        GitLabAPIError: If the GitLab API returns an error.
-    """
-    try:
-        client = gitlab_client._get_sync_client()
-        project = client.projects.get(input_model.project_path)
-        mr = project.mergerequests.get(input_model.mr_iid)
-
-        # Prepare parameters
-        params = {}
-        if input_model.sha:
-            params["sha"] = input_model.sha
-
-        # Approve the merge request
-        mr.approve(**params)
-    except Exception as exc:
-        error_message = f"Approval operation failed: {exc!s}"
-        raise GitLabAPIError(error_message) from exc
-    else:
-        return True
-
-
-def merge_merge_request(input_model: MergeMergeRequestInput) -> GitLabMergeRequest:
+async def merge_merge_request(
+    project_path: str, mr_iid: int, options: MergeOptions | None = None
+) -> AcceptedMergeRequest:
     """Merge a merge request.
 
     Args:
-        input_model: The input model containing the project path, merge request IID, and merge options.
+        project_path: The path of the project.
+        mr_iid: The internal ID of the merge request.
+        options: Options for merging the merge request.
 
     Returns:
-        GitLabMergeRequest: The merged merge request.
-
-    Raises:
-        GitLabAPIError: If the GitLab API returns an error.
+        AcceptedMergeRequest: The merged merge request details.
     """
-    try:
-        client = gitlab_client._get_sync_client()
-        project = client.projects.get(input_model.project_path)
-        mr = project.mergerequests.get(input_model.mr_iid)
+    project_path_encoded = gitlab_rest_client._encode_path_parameter(project_path)
 
-        # Prepare parameters
-        params = {}
-        if input_model.merge_commit_message:
-            params["merge_commit_message"] = input_model.merge_commit_message
-        if input_model.should_remove_source_branch:
-            params["should_remove_source_branch"] = (
-                input_model.should_remove_source_branch
-            )
-        if input_model.merge_when_pipeline_succeeds:
-            params["merge_when_pipeline_succeeds"] = (
-                input_model.merge_when_pipeline_succeeds
-            )
-        if input_model.sha:
-            params["sha"] = input_model.sha
+    if options is None:
+        options = MergeOptions()
 
-        # Merge the merge request
-        mr.merge(**params)
+    payload = {
+        "merge_commit_message": options.merge_commit_message,
+        "squash_commit_message": options.squash_commit_message,
+        "auto_merge": options.auto_merge,
+        "should_remove_source_branch": options.should_remove_source_branch,
+        "sha": options.sha,
+        "squash": options.squash,
+    }
 
-        # Get the updated merge request - use consistent parameter style
-        mr = project.mergerequests.get(input_model.mr_iid)
-        return _map_mr_to_schema(mr)
-    except Exception as exc:
-        # Include the original GitLab error for better debugging
-        error_message = f"Merge operation failed: {exc!s}"
-        raise GitLabAPIError(error_message) from exc
+    # Remove None values
+    payload = {k: v for k, v in payload.items() if v is not None}
+
+    response = await gitlab_rest_client.put_async(
+        f"/projects/{project_path_encoded}/merge_requests/{mr_iid}/merge",
+        json_data=payload,
+    )
+
+    return AcceptedMergeRequest.model_validate(response)
 
 
-def close_merge_request(input_model: CloseMergeRequestInput) -> GitLabMergeRequest:
-    """Close a merge request.
+async def create_merge_request_comment(
+    project_path: str, mr_iid: int, body: str
+) -> GitLabComment:
+    """Create a comment on a merge request.
 
     Args:
-        input_model: The input model containing the project path and merge request IID.
+        project_path: The path of the project.
+        mr_iid: The internal ID of the merge request.
+        body: The content of the comment.
 
     Returns:
-        GitLabMergeRequest: The closed merge request.
-
-    Raises:
-        GitLabAPIError: If the GitLab API returns an error.
+        GitLabComment: The created comment.
     """
-    try:
-        client = gitlab_client._get_sync_client()
-        project = client.projects.get(input_model.project_path)
-        mr = project.mergerequests.get(input_model.mr_iid)
+    project_path_encoded = gitlab_rest_client._encode_path_parameter(project_path)
 
-        # Close the merge request
-        mr.state_event = "close"
-        mr.save()
+    response = await gitlab_rest_client.post_async(
+        f"/projects/{project_path_encoded}/merge_requests/{mr_iid}/notes",
+        json_data={"body": body},
+    )
 
-        # Get the updated merge request
-        mr = project.mergerequests.get(input_model.mr_iid)
-        return _map_mr_to_schema(mr)
-    except Exception as exc:
-        error_message = f"Close operation failed: {exc!s}"
-        raise GitLabAPIError(error_message) from exc
+    return GitLabComment.model_validate(response)
 
 
-# Async versions of the functions
-create_merge_request_async = to_async(create_merge_request)
-list_merge_requests_async = to_async(list_merge_requests)
-get_merge_request_async = to_async(get_merge_request)
-comment_on_merge_request_async = to_async(comment_on_merge_request)
-list_merge_request_comments_async = to_async(list_merge_request_comments)
-list_merge_request_changes_async = to_async(list_merge_request_changes)
-get_merge_request_diff_async = to_async(get_merge_request_diff)
-suggest_code_in_merge_request_async = to_async(suggest_code_in_merge_request)
-approve_merge_request_async = to_async(approve_merge_request)
-merge_merge_request_async = to_async(merge_merge_request)
-close_merge_request_async = to_async(close_merge_request)
+async def create_merge_request_thread(
+    project_path: str, mr_iid: int, body: str, position: dict[str, Any]
+) -> dict[str, Any]:
+    """Create a thread on a merge request.
+
+    Args:
+        project_path: The path of the project.
+        mr_iid: The internal ID of the merge request.
+        body: The content of the thread.
+        position: The position in the diff where the thread should be placed.
+
+    Returns:
+        dict[str, Any]: The created thread.
+    """
+    project_path_encoded = gitlab_rest_client._encode_path_parameter(project_path)
+
+    payload = {
+        "body": body,
+        "position": position,
+    }
+
+    response = await gitlab_rest_client.post_async(
+        f"/projects/{project_path_encoded}/merge_requests/{mr_iid}/discussions",
+        json_data=payload,
+    )
+
+    return cast(dict[str, Any], response)
+
+
+async def apply_suggestion(
+    suggestion_id: int, commit_message: str | None = None
+) -> MergeRequestSuggestion:
+    """Apply a suggestion to a merge request.
+
+    Args:
+        suggestion_id: The ID of the suggestion.
+        commit_message: The commit message for applying the suggestion.
+
+    Returns:
+        MergeRequestSuggestion: The suggestion details.
+    """
+    payload: dict[str, Any] = {}
+    if commit_message:
+        payload["commit_message"] = commit_message
+
+    response = await gitlab_rest_client.put_async(
+        f"/suggestions/{suggestion_id}/apply",
+        json_data=payload,
+    )
+
+    return MergeRequestSuggestion.model_validate(response)
+
+
+async def apply_multiple_suggestions(
+    ids: list[int], commit_message: str | None = None
+) -> list[MergeRequestSuggestion]:
+    """Apply multiple suggestions to a merge request.
+
+    Args:
+        ids: The IDs of the suggestions.
+        commit_message: The commit message for applying the suggestions.
+
+    Returns:
+        list[MergeRequestSuggestion]: The suggestions details.
+    """
+    payload: dict[str, Any] = {"ids": ids}
+    if commit_message:
+        payload["commit_message"] = commit_message
+
+    response = await gitlab_rest_client.put_async(
+        "/suggestions/batch_apply",
+        json_data=payload,
+    )
+
+    return [MergeRequestSuggestion.model_validate(sugg) for sugg in response]

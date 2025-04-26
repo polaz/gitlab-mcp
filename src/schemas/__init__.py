@@ -10,6 +10,13 @@ from .branches import (
     GitLabReference,
 )
 
+# Commit schemas
+from .commits import (
+    GitLabCommit,
+    GitLabCommitDetail,
+    GitLabCommitter,
+)
+
 # File schemas
 from .files import (
     GetFileContentsInput,

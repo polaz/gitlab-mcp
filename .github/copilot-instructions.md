@@ -53,12 +53,7 @@
   - `api/`: Client implementation and API interfaces
   - `services/`: Business logic and domain services
   - `tools/`: CLI tools and utilities
-
-## Testing
-- Write **pytest** tests for all business logic.
-- Use **pytest-asyncio** with "auto" mode for testing asynchronous code.
-- Exclude magic number checks in test code as configured in ruff settings.
-
+  
 ## Code Quality Tools
 - Ensure code passes all enabled ruff linting rules including:
   - `E`, `W`: pycodestyle errors and warnings
@@ -79,3 +74,6 @@
 - **Avoid inline comments** - they make code harder to read and maintain.
 - Use descriptive variable and function names that make comments unnecessary.
 - Comment on "why" code does something, not "what" it does.
+
+## For up-to-date information
+- Make tool call to context7 with library id "gitlabhq/gitlabhq"

@@ -131,3 +131,13 @@ class DeleteGroupInput(BaseModel):
     """
 
     group_id: str  # Can be either an ID (int) or a path (str)
+
+
+class GetGroupByProjectNamespaceInput(BaseModel):
+    """Input model for getting a GitLab group based on a project namespace.
+
+    Attributes:
+        project_namespace: The namespace path of the project.
+    """
+
+    project_namespace: str
