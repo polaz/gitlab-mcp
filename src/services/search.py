@@ -4,8 +4,9 @@ This module provides functions for searching across GitLab resources.
 """
 
 from typing import Any
-from src.api.rest_client import gitlab_rest_client
+
 from src.api.custom_exceptions import GitLabAPIError, GitLabErrorType
+from src.api.rest_client import gitlab_rest_client
 from src.schemas.search import (
     BlobSearchResult,
     GlobalSearchRequest,
@@ -16,7 +17,9 @@ from src.schemas.search import (
 )
 
 
-def _parse_search_results(response: list[dict[str, Any]], scope: SearchScope) -> list[Any]:
+def _parse_search_results(
+    response: list[dict[str, Any]], scope: SearchScope
+) -> list[Any]:
     """Parse search results for projects/blobs only, returning only minimal fields."""
     result_map = {
         SearchScope.PROJECTS: ProjectSearchResult,
@@ -27,7 +30,10 @@ def _parse_search_results(response: list[dict[str, Any]], scope: SearchScope) ->
     if model_class is None:
         raise UnsupportedSearchScopeError(scope)
     minimal_keys = set(model_class.model_fields.keys())
-    return [model_class.model_validate({k: v for k, v in item.items() if k in minimal_keys}) for item in response]
+    return [
+        model_class.model_validate({k: v for k, v in item.items() if k in minimal_keys})
+        for item in response
+    ]
 
 
 async def search_globally(search_term: str, scope: SearchScope) -> list[Any]:
@@ -62,7 +68,9 @@ async def search_globally(search_term: str, scope: SearchScope) -> list[Any]:
         ) from exc
 
 
-async def search_group(group_id: str, search_term: str, scope: SearchScope) -> list[Any]:
+async def search_group(
+    group_id: str, search_term: str, scope: SearchScope
+) -> list[Any]:
     """Search within a specific group (projects/blobs only)."""
     try:
         search_request = GroupSearchRequest(

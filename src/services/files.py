@@ -76,7 +76,6 @@ async def get_file_contents(input_model: GetFileContentsInput) -> GitLabContent:
         ) from exc
 
 
-
 async def create_file(input_model: CreateFileInput) -> FileOperationResponse:
     """Create a new file in a GitLab repository using the REST API.
 
@@ -232,4 +231,3 @@ async def delete_file(input_model: DeleteFileInput) -> bool:
             GitLabErrorType.SERVER_ERROR,
             {"message": "Internal error deleting file", "operation": "delete_file"},
         ) from exc
-

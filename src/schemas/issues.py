@@ -41,7 +41,6 @@ class IssueSeverity(str, Enum):
     CRITICAL = "CRITICAL"
 
 
-
 class IssueState(str, Enum):
     """State of GitLab issues.
 
@@ -54,7 +53,6 @@ class IssueState(str, Enum):
     OPENED = "opened"
     CLOSED = "closed"
     ALL = "all"
-
 
 
 class GitLabIssue(GitLabResponseBase):
@@ -78,7 +76,6 @@ class GitLabIssue(GitLabResponseBase):
     description: str | None = None
     state: str
     web_url: str
-
 
 
 class CreateIssueInput(BaseModel):
@@ -124,6 +121,7 @@ class MoveIssueInput(BaseModel):
     project_path: str
     issue_iid: int
     to_project_id: int
+
 
 class CreateIssueCommentInput(BaseModel):
     """Input model for creating a comment on a GitLab issue.
@@ -180,4 +178,5 @@ class GitLabIssueListResponse(PaginatedResponse[GitLabIssue]):
         count: Total number of issues available.
         items: The list of issues returned.
     """
+
     pass

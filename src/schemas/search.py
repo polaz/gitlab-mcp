@@ -4,6 +4,8 @@ This module defines Pydantic models for GitLab search functionality.
 """
 
 from enum import Enum
+from typing import ClassVar
+
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -26,6 +28,7 @@ class BlobSearchFilters(BaseModel):
 class SearchRequest(BaseModel):
     """Base search request model for GitLab API."""
 
+    MIN_SEARCH_LENGTH: ClassVar[int] = 3
     scope: SearchScope = Field(
         ..., description="The scope to search in. Determines the type of results."
     )
@@ -36,8 +39,10 @@ class SearchRequest(BaseModel):
     @field_validator("search")
     @classmethod
     def validate_search_length(cls, v: str) -> str:
-        if len(v) < 3:
-            raise ValueError("Search query must be at least 3 characters")
+        if len(v) < cls.MIN_SEARCH_LENGTH:
+            raise ValueError(
+                f"Search query must be at least {cls.MIN_SEARCH_LENGTH} characters"
+            )
         return v
 
 

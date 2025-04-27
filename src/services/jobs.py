@@ -14,7 +14,9 @@ async def get_job_logs(input_model: JobLogsInput) -> JobLogsResponse:
         The job logs.
     """
     try:
-        project_path = gitlab_rest_client._encode_path_parameter(input_model.project_path)
+        project_path = gitlab_rest_client._encode_path_parameter(
+            input_model.project_path
+        )
         job_id = input_model.job_id
         response = await gitlab_rest_client.get_async(
             f"/projects/{project_path}/jobs/{job_id}/trace"
@@ -22,10 +24,10 @@ async def get_job_logs(input_model: JobLogsInput) -> JobLogsResponse:
 
         return JobLogsResponse(content=response)
     except GitLabAPIError as exc:
-            raise GitLabAPIError(
-                GitLabErrorType.REQUEST_FAILED,
-                {
-                    "message": f"Failed to get job logs for job {input_model.job_id}",
-                    "operation": "get_job_logs",
-                },
-            ) from exc
+        raise GitLabAPIError(
+            GitLabErrorType.REQUEST_FAILED,
+            {
+                "message": f"Failed to get job logs for job {input_model.job_id}",
+                "operation": "get_job_logs",
+            },
+        ) from exc
