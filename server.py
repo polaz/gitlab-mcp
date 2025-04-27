@@ -51,7 +51,7 @@ from src.services.repositories import create_repository, list_repository_tree
 from src.services.search import search_globally, search_group, search_project
 
 # Create the MCP server
-mcp = FastMCP("Gitlab", "0.1.0", description="GitLab API tools")
+mcp = FastMCP("Gitlab", instructions="Use the tools to interact with GitLab.")
 
 # Register repository tools
 
@@ -221,4 +221,4 @@ mcp.tool(
 
 # Run the server
 if __name__ == "__main__":
-    mcp.run()
+    mcp.run(transport="stdio")
