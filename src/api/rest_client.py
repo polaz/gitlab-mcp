@@ -2,23 +2,16 @@
 
 import os
 from collections.abc import AsyncIterator
+from http import HTTPStatus
 from typing import Any
 
 import httpx
 
-from .exceptions.base import GitLabAPIError, GitLabAuthError
+from src.api.custom_exceptions import GitLabAPIError, GitLabAuthError, GitLabErrorType
 
 
 class GitLabRestClient:
-    """GitLab REST API client using httpx.
-
-    This class handles direct API requests to GitLab using httpx, providing
-    both sync and async interfaces. It manages authentication headers and
-    provides utility methods for common request patterns.
-    """
-
-    HTTP_CREATED = 201
-    HTTP_OK = 200
+    """GitLab REST API client using httpx."""
 
     def __init__(self) -> None:
         """Initialize the GitLab REST client."""
@@ -30,22 +23,20 @@ class GitLabRestClient:
         """Get headers for authenticating with the GitLab API.
 
         Returns:
-            dict[str, str]: Headers including authentication token.
+            The headers including authentication token.
 
         Raises:
             GitLabAuthError: If the authentication token is not set.
         """
         if not self._token:
-            raise GitLabAuthError(
-                "GITLAB_PERSONAL_ACCESS_TOKEN environment variable is not set."
-            )
+            raise GitLabAuthError()
         return {"PRIVATE-TOKEN": self._token}
 
     def get_api_url(self) -> str:
         """Get the base URL for the GitLab API.
 
         Returns:
-            str: The GitLab API base URL.
+            The GitLab API base URL.
         """
         return self._base_url
 
@@ -53,7 +44,7 @@ class GitLabRestClient:
         """Get or create an async HTTP client.
 
         Returns:
-            httpx.AsyncClient: The async HTTP client.
+            The async HTTP client.
         """
         if self._httpx_client is None:
             self._httpx_client = httpx.AsyncClient(base_url=f"{self._base_url}/api/v4")
@@ -74,13 +65,7 @@ class GitLabRestClient:
         Raises:
             GitLabAPIError: If the response indicates an error.
         """
-        try:
-            error_data = response.json()
-            message = error_data.get("message", response.text)
-        except ValueError:
-            message = response.text
-
-        raise GitLabAPIError(message, code=response.status_code)
+        raise GitLabAPIError.from_response(response)
 
     def _encode_path_parameter(self, param: str) -> str:
         """URL encode a path parameter for use in GitLab API URLs.
@@ -89,7 +74,7 @@ class GitLabRestClient:
             param: The parameter to encode.
 
         Returns:
-            str: The encoded parameter.
+            The encoded parameter.
         """
         return param.replace("/", "%2F")
 
@@ -101,7 +86,7 @@ class GitLabRestClient:
             params: Optional query parameters.
 
         Returns:
-            Any: The JSON response.
+            The JSON response.
 
         Raises:
             GitLabAPIError: If the request fails.
@@ -115,7 +100,10 @@ class GitLabRestClient:
                 return response.json()
             self._handle_error_response(response)
         except httpx.HTTPError as exc:
-            raise GitLabAPIError(f"HTTP request failed: {exc}") from exc
+            raise GitLabAPIError(
+                GitLabErrorType.REQUEST_FAILED,
+                {"message": str(exc), "action": "get"},
+            ) from exc
 
     async def post_async(
         self, path: str, json_data: dict[str, Any], params: dict[str, Any] | None = None
@@ -128,7 +116,7 @@ class GitLabRestClient:
             params: Optional query parameters.
 
         Returns:
-            Any: The JSON response.
+            The JSON response.
 
         Raises:
             GitLabAPIError: If the request fails.
@@ -144,7 +132,10 @@ class GitLabRestClient:
                 return response.json()
             self._handle_error_response(response)
         except httpx.HTTPError as exc:
-            raise GitLabAPIError(f"HTTP request failed: {exc}") from exc
+            raise GitLabAPIError(
+                GitLabErrorType.REQUEST_FAILED,
+                {"message": str(exc), "action": "post"},
+            ) from exc
 
     async def put_async(
         self, path: str, json_data: dict[str, Any], params: dict[str, Any] | None = None
@@ -157,7 +148,7 @@ class GitLabRestClient:
             params: Optional query parameters.
 
         Returns:
-            Any: The JSON response.
+            The JSON response.
 
         Raises:
             GitLabAPIError: If the request fails.
@@ -173,7 +164,10 @@ class GitLabRestClient:
                 return response.json()
             self._handle_error_response(response)
         except httpx.HTTPError as exc:
-            raise GitLabAPIError(f"HTTP request failed: {exc}") from exc
+            raise GitLabAPIError(
+                GitLabErrorType.REQUEST_FAILED,
+                {"message": str(exc), "action": "put"},
+            ) from exc
 
     async def delete_async(
         self, path: str, params: dict[str, Any] | None = None
@@ -185,7 +179,7 @@ class GitLabRestClient:
             params: Optional query parameters.
 
         Returns:
-            Any: The JSON response or None if no content.
+            The JSON response or None if no content.
 
         Raises:
             GitLabAPIError: If the request fails.
@@ -201,7 +195,10 @@ class GitLabRestClient:
                 return None
             self._handle_error_response(response)
         except httpx.HTTPError as exc:
-            raise GitLabAPIError(f"HTTP request failed: {exc}") from exc
+            raise GitLabAPIError(
+                GitLabErrorType.REQUEST_FAILED,
+                {"message": str(exc), "action": "delete"},
+            ) from exc
 
     async def paginate_async(
         self, path: str, params: dict[str, Any] | None = None
@@ -213,7 +210,7 @@ class GitLabRestClient:
             params: Optional query parameters.
 
         Yields:
-            dict[str, Any]: Each item in the paginated response.
+            Each item in the paginated response.
 
         Raises:
             GitLabAPIError: If the request fails.
@@ -247,7 +244,10 @@ class GitLabRestClient:
 
                 page += 1
             except httpx.HTTPError as exc:
-                raise GitLabAPIError(f"HTTP pagination request failed: {exc}") from exc
+                raise GitLabAPIError(
+                    GitLabErrorType.REQUEST_FAILED,
+                    {"message": str(exc), "action": "paginate"},
+                ) from exc
 
 
 # Singleton instance for global use
