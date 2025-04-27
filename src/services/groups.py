@@ -1,7 +1,7 @@
 """Service functions for interacting with GitLab groups using the REST API."""
 
-from src.api.rest_client import gitlab_rest_client
-from src.schemas.groups import (
+from src.api import gitlab_rest_client
+from src.schemas import (
     GetGroupByProjectNamespaceInput,
     GetGroupInput,
     GitLabGroup,

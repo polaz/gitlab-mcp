@@ -3,7 +3,7 @@
 
 from typing import cast
 
-from src.api.exceptions import (
+from src.api import (
     BranchCreationError,
     BranchDeleteError,
     BranchListError,
@@ -12,7 +12,7 @@ from src.api.exceptions import (
     MergedBranchesDeleteError,
 )
 from src.api.rest_client import gitlab_rest_client
-from src.schemas.branches import (
+from src.schemas import (
     CreateBranchInput,
     DeleteBranchInput,
     DeleteMergedBranchesInput,

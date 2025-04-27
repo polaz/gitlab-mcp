@@ -1,4 +1,3 @@
-# filepath: c:\Users\aditp\Desktop\python\gitlab-mcp-main\src\api\exceptions\branch.py
 """Exceptions specific to GitLab branch operations."""
 
 from src.api.exceptions.base import GitLabAPIError

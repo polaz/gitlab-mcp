@@ -2,7 +2,7 @@ from enum import Enum
 
 from pydantic import BaseModel
 
-from .base import GitLabResponseBase, PaginatedResponse, VisibilityLevel
+from src.schemas.base import GitLabResponseBase, PaginatedResponse, VisibilityLevel
 
 
 class GroupAccessLevel(int, Enum):

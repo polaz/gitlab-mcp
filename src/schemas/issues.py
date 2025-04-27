@@ -5,7 +5,7 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
-from .base import GitLabResponseBase, PaginatedResponse
+from src.schemas.base import GitLabResponseBase, PaginatedResponse
 
 
 class IssueType(str, Enum):

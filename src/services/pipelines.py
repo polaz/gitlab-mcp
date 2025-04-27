@@ -1,171 +1,74 @@
-from gitlab.v4.objects import ProjectPipeline as Pipeline
+from typing import Any
 
-from ..api.async_utils import to_async
-from ..api.client import gitlab_client
-from ..api.exceptions import GitLabAPIError
-from ..schemas.filters import PipelineFilterParams
-from ..schemas.pipelines import (
-    CreatePipelineInput,
+from src.api.rest_client import gitlab_rest_client
+from src.schemas.pipelines import (
     GetPipelineInput,
     GitLabPipeline,
     GitLabPipelineListResponse,
     ListPipelinesInput,
-    PipelineAction,
-    PipelineActionInput,
 )
 
 
-def _map_pipeline_to_schema(pipeline: Pipeline) -> GitLabPipeline:
-    """Map a GitLab pipeline object to our schema.
-
-    Args:
-        pipeline: The GitLab pipeline object.
-
-    Returns:
-        GitLabPipeline: The mapped pipeline schema.
-    """
-    return GitLabPipeline(
-        id=pipeline.id,
-        iid=pipeline.iid,
-        project_id=pipeline.project_id,
-        sha=pipeline.sha,
-        ref=pipeline.ref,
-        status=pipeline.status,
-        created_at=pipeline.created_at,
-        updated_at=pipeline.updated_at,
-        web_url=pipeline.web_url,
-    )
-
-
-def list_pipelines(input_model: ListPipelinesInput) -> GitLabPipelineListResponse:
+async def list_project_pipelines(
+    input_model: ListPipelinesInput,
+) -> GitLabPipelineListResponse:
     """List pipelines in a GitLab project.
 
     Args:
         input_model: The input model containing filter parameters.
 
     Returns:
-        GitLabPipelineListResponse: The list of pipelines.
-
-    Raises:
-        GitLabAPIError: If the GitLab API returns an error.
+        GitLabPipelineListResponse: A paginated list of pipelines.
     """
-    try:
-        client = gitlab_client._get_sync_client()
-        project = client.projects.get(input_model.project_path)
-
-        # Convert input model to filter params
-        filter_params = PipelineFilterParams(
-            page=input_model.page,
-            per_page=input_model.per_page,
-            status=input_model.status.value if input_model.status else None,
-            ref=input_model.ref,
-            sha=input_model.sha,
-        )
-
-        # Convert to dict, excluding None values
-        filters = filter_params.model_dump(exclude_none=True)
-
-        pipelines = project.pipelines.list(**filters)
-
-        # Map to our schema
-        items = [
-            _map_pipeline_to_schema(project.pipelines.get(pipeline.id))
-            for pipeline in pipelines
-        ]
-
-        return GitLabPipelineListResponse(
-            items=items,
-        )
-    except Exception as exc:
-        raise GitLabAPIError(str(exc)) from exc
+    project_path = gitlab_rest_client._encode_path_parameter(input_model.project_path)
+    params: dict[str, Any] = {
+        "page": input_model.page,
+        "per_page": input_model.per_page,
+    }
+    if input_model.status:
+        params["status"] = input_model.status.value
+    if input_model.ref:
+        params["ref"] = input_model.ref
+    if input_model.sha:
+        params["sha"] = input_model.sha
+    response_data = await gitlab_rest_client.get_async(
+        f"/projects/{project_path}/pipelines", params=params
+    )
+    items = [GitLabPipeline.model_validate(p) for p in response_data]
+    return GitLabPipelineListResponse(items=items)
 
 
-def get_pipeline(input_model: GetPipelineInput) -> GitLabPipeline:
-    """Get a specific pipeline from a GitLab project.
+async def get_single_pipeline(input_model: GetPipelineInput) -> GitLabPipeline:
+    """Get a single pipeline by ID for a GitLab project.
 
     Args:
-        input_model: The input model containing the project path and pipeline ID.
+        input_model: The input model with project path and pipeline ID.
 
     Returns:
         GitLabPipeline: The pipeline details.
-
-    Raises:
-        GitLabAPIError: If the GitLab API returns an error.
     """
-    try:
-        client = gitlab_client._get_sync_client()
-        project = client.projects.get(input_model.project_path)
-        pipeline = project.pipelines.get(input_model.pipeline_id)
-
-        return _map_pipeline_to_schema(pipeline)
-    except Exception as exc:
-        raise GitLabAPIError(str(exc)) from exc
+    project_path = gitlab_rest_client._encode_path_parameter(input_model.project_path)
+    response_data = await gitlab_rest_client.get_async(
+        f"/projects/{project_path}/pipelines/{input_model.pipeline_id}"
+    )
+    return GitLabPipeline.model_validate(response_data)
 
 
-def create_pipeline(input_model: CreatePipelineInput) -> GitLabPipeline:
-    """Create a new pipeline in a GitLab project.
+async def get_latest_pipeline(
+    project_path: str, ref: str | None = None
+) -> GitLabPipeline:
+    """Get the latest pipeline for the most recent commit on a specific ref.
 
     Args:
-        input_model: The input model containing the project path, ref, and variables.
+        project_path: The path of the project (e.g., 'namespace/project').
+        ref: The branch or tag to check for the latest pipeline.
 
     Returns:
-        GitLabPipeline: The created pipeline details.
-
-    Raises:
-        GitLabAPIError: If the GitLab API returns an error.
+        GitLabPipeline: The latest pipeline details.
     """
-    try:
-        client = gitlab_client._get_sync_client()
-        project = client.projects.get(input_model.project_path)
-
-        # Build parameters
-        params: dict[str, str | list[dict[str, str]]] = {"ref": input_model.ref}
-        if input_model.variables:
-            params["variables"] = [
-                {"key": key, "value": value}
-                for key, value in input_model.variables.items()
-            ]
-
-        pipeline = project.pipelines.create(params)
-
-        return _map_pipeline_to_schema(pipeline)
-    except Exception as exc:
-        raise GitLabAPIError(str(exc)) from exc
-
-
-def pipeline_action(input_model: PipelineActionInput) -> GitLabPipeline:
-    """Perform an action on a GitLab pipeline (cancel or retry).
-
-    Args:
-        input_model: The input model containing the project path, pipeline ID, and action.
-
-    Returns:
-        GitLabPipeline: The updated pipeline details.
-
-    Raises:
-        GitLabAPIError: If the GitLab API returns an error.
-    """
-    try:
-        client = gitlab_client._get_sync_client()
-        project = client.projects.get(input_model.project_path)
-        pipeline = project.pipelines.get(input_model.pipeline_id)
-
-        # Perform the action
-        if input_model.action == PipelineAction.CANCEL:
-            pipeline.cancel()
-        elif input_model.action == PipelineAction.RETRY:
-            pipeline.retry()
-
-        # Refresh pipeline data
-        pipeline = project.pipelines.get(input_model.pipeline_id)
-
-        return _map_pipeline_to_schema(pipeline)
-    except Exception as exc:
-        raise GitLabAPIError(str(exc)) from exc
-
-
-# Async versions of the functions
-list_pipelines_async = to_async(list_pipelines)
-get_pipeline_async = to_async(get_pipeline)
-create_pipeline_async = to_async(create_pipeline)
-pipeline_action_async = to_async(pipeline_action)
+    encoded_path = gitlab_rest_client._encode_path_parameter(project_path)
+    params = {"ref": ref} if ref else None
+    response_data = await gitlab_rest_client.get_async(
+        f"/projects/{encoded_path}/pipelines/latest", params=params
+    )
+    return GitLabPipeline.model_validate(response_data)

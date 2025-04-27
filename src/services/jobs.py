@@ -2,8 +2,8 @@
 
 from typing import Any
 
-from ..api.rest_client import gitlab_rest_client
-from ..schemas.jobs import (
+from src.api.rest_client import gitlab_rest_client
+from src.schemas import (
     GitLabJob,
     GitLabJobListResponse,
     GitLabJobLogsResponse,

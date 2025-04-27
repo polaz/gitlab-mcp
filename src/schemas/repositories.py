@@ -1,4 +1,9 @@
-from .base import BaseModel, GitLabResponseBase, PaginatedResponse, VisibilityLevel
+from src.schemas.base import (
+    BaseModel,
+    GitLabResponseBase,
+    PaginatedResponse,
+    VisibilityLevel,
+)
 
 
 class ForkRepositoryInput(BaseModel):
