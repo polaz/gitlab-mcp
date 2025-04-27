@@ -1,58 +1,70 @@
 from mcp.server.fastmcp import FastMCP
 
-from src.tools import (
-    close_issue_tool,
-    comment_on_issue_tool,
+from src.tools.branches import (
     create_branch_tool,
-    create_file_tool,
-    create_issue_link_tool,
-    create_issue_tool,
-    create_merge_request_tool,
-    create_repository_tool,
     delete_branch_tool,
-    delete_file_tool,
-    delete_issue_link_tool,
-    delete_issue_tool,
     delete_merged_branches_tool,
     get_branch_tool,
     get_default_branch_ref_tool,
+    list_branches_tool,
+    protect_branch_tool,
+    unprotect_branch_tool,
+)
+from src.tools.files import (
+    create_file_tool,
+    delete_file_tool,
     get_file_blame_tool,
     get_file_contents_tool,
+    get_raw_file_contents_tool,
+    update_file_tool,
+)
+from src.tools.groups import (
     get_group_by_project_namespace_tool,
     get_group_tool,
+    list_groups_tool,
+)
+from src.tools.issues import (
+    close_issue_tool,
+    comment_on_issue_tool,
+    create_issue_link_tool,
+    create_issue_tool,
+    delete_issue_link_tool,
+    delete_issue_tool,
     get_issue_link_tool,
     get_issue_tool,
-    get_job_failure_info_tool,
-    get_job_logs_tool,
-    get_job_tool,
-    get_latest_pipeline_tool,
-    get_merge_request_tool,
-    get_raw_file_contents_tool,
-    get_single_pipeline_tool,
-    get_user_tool,
     list_all_issues_tool,
-    list_branches_tool,
     list_group_issues_tool,
-    list_groups_tool,
     list_issue_comments_tool,
     list_issue_links_tool,
     list_issues_tool,
-    list_merge_requests_tool,
-    list_project_pipelines_tool,
-    list_users_tool,
-    merge_merge_request_tool,
     move_issue_tool,
-    protect_branch_tool,
+    update_issue_tool,
+)
+from src.tools.jobs import (
+    get_job_failure_info_tool,
+    get_job_logs_tool,
+    get_job_tool,
+)
+from src.tools.merge_requests import (
+    create_merge_request_tool,
+    get_merge_request_tool,
+    list_merge_requests_tool,
+    merge_merge_request_tool,
+)
+from src.tools.pipelines import (
+    get_latest_pipeline_tool,
+    get_single_pipeline_tool,
+    list_project_pipelines_tool,
+)
+from src.tools.repositories import create_repository_tool
+from src.tools.search import (
     search_global_tool,
     search_group_tool,
     search_project_tool,
-    unprotect_branch_tool,
-    update_file_tool,
-    update_issue_tool,
 )
 
 # Create the MCP server
-mcp = FastMCP("Gitlab")
+mcp = FastMCP("Gitlab", instructions="This server exposes GitLab operations as MCP tools. Use the tool names and descriptions to interact with GitLab resources.")
 
 # Register repository tools
 
@@ -95,6 +107,11 @@ mcp.tool(
 )(unprotect_branch_tool)
 
 # Register file tools
+
+mcp.tool(
+    name="create_file",
+    description="Create a new file in a GitLab repository.",
+)(create_file_tool)
 mcp.tool(
     name="get_file_contents",
     description="Retrieve the contents of a file from a GitLab repository.",
@@ -103,10 +120,6 @@ mcp.tool(
     name="get_raw_file_contents",
     description="Retrieve the raw contents of a file from a GitLab repository.",
 )(get_raw_file_contents_tool)
-mcp.tool(
-    name="create_file",
-    description="Create a new file in a GitLab repository.",
-)(create_file_tool)
 mcp.tool(
     name="update_file",
     description="Update an existing file in a GitLab repository.",
@@ -117,7 +130,7 @@ mcp.tool(
 )(delete_file_tool)
 mcp.tool(
     name="get_file_blame",
-    description="Get blame information for a file in a GitLab repository.",
+    description="Retrieve blame information for a file in a GitLab repository.",
 )(get_file_blame_tool)
 
 # Register issue tools
@@ -217,9 +230,6 @@ mcp.tool(
     description="Get a GitLab group based on a project namespace.",
 )(get_group_by_project_namespace_tool)
 
-# Register user tools
-mcp.tool(name="list_users", description="List GitLab users.")(list_users_tool)
-mcp.tool(name="get_user", description="Get a specific GitLab user.")(get_user_tool)
 
 # Register search tools
 mcp.tool(
@@ -237,4 +247,4 @@ mcp.tool(
 
 # Run the server
 if __name__ == "__main__":
-    mcp.run()
+    mcp.run(transport="stdio")

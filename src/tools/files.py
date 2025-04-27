@@ -4,14 +4,7 @@ import asyncio
 from dataclasses import dataclass
 from typing import Any
 
-from src.api.exceptions import (
-    FileBlameError,
-    FileContentError,
-    FileCreateError,
-    FileDeleteError,
-    FileUpdateError,
-    GitLabAPIError,
-)
+from src.api.custom_exceptions import GitLabAPIError
 from src.schemas.files import (
     CreateFileInput,
     DeleteFileInput,
@@ -67,7 +60,7 @@ def get_file_contents_tool(
 
         # Convert to dict
         return response.model_dump()
-    except (GitLabAPIError, FileContentError) as exc:
+    except GitLabAPIError as exc:
         raise ValueError(str(exc)) from exc
 
 
@@ -97,7 +90,7 @@ def get_raw_file_contents_tool(
 
         # Call service function
         return asyncio.run(get_raw_file_contents(input_model))
-    except (GitLabAPIError, FileContentError) as exc:
+    except GitLabAPIError as exc:
         raise ValueError(str(exc)) from exc
 
 
@@ -146,7 +139,7 @@ def create_file_tool(
 
         # Convert to dict
         return response.model_dump()
-    except (GitLabAPIError, FileCreateError) as exc:
+    except GitLabAPIError as exc:
         raise ValueError(str(exc)) from exc
 
 
@@ -198,7 +191,7 @@ def update_file_tool(
 
         # Convert to dict
         return response.model_dump()
-    except (GitLabAPIError, FileUpdateError) as exc:
+    except GitLabAPIError as exc:
         raise ValueError(str(exc)) from exc
 
 
@@ -230,7 +223,7 @@ def delete_file_tool(
 
         # Call service function
         asyncio.run(delete_file(input_model))
-    except (GitLabAPIError, FileDeleteError) as exc:
+    except GitLabAPIError as exc:
         raise ValueError(str(exc)) from exc
 
 
@@ -271,5 +264,5 @@ def get_file_blame_tool(
 
         # Convert to list of dicts
         return [blame_range.model_dump() for blame_range in response]
-    except (GitLabAPIError, FileBlameError) as exc:
+    except GitLabAPIError as exc:
         raise ValueError(str(exc)) from exc

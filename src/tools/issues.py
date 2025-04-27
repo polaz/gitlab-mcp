@@ -1,9 +1,9 @@
 """Tool functions for working with GitLab issues."""
 
 import asyncio
-from typing import Any, cast
+from typing import Any
 
-from src.api.exceptions import GitLabAPIError
+from src.api.custom_exceptions import GitLabAPIError
 from src.schemas.issues import (
     CreateIssueCommentInput,
     CreateIssueInput,
@@ -266,7 +266,7 @@ def list_group_issues_tool(
         raise ValueError(str(exc)) from exc
 
 
-def get_issue_tool(project_path: str, issue_iid: int) -> dict[str, Any]:
+def get_issue_tool(project_path: str, issue_iid: int) -> dict:
     """Get a specific issue from a GitLab project.
 
     Args:
@@ -306,7 +306,7 @@ def create_issue_tool(
     due_date: str | None = None,
     issue_type: str | None = None,
     weight: int | None = None,
-) -> dict[str, Any]:
+) -> dict:
     """Create a new issue in a GitLab project.
 
     Args:
@@ -376,7 +376,7 @@ def update_issue_tool(
     due_date: str | None = None,
     discussion_locked: bool | None = None,
     weight: int | None = None,
-) -> dict[str, Any]:
+) -> dict:
     """Update an existing issue in a GitLab project.
 
     Args:
@@ -429,7 +429,7 @@ def update_issue_tool(
         raise ValueError(str(exc)) from exc
 
 
-def close_issue_tool(project_path: str, issue_iid: int) -> dict[str, Any]:
+def close_issue_tool(project_path: str, issue_iid: int) -> dict:
     """Close an issue in a GitLab project.
 
     Args:
@@ -483,7 +483,7 @@ def delete_issue_tool(project_path: str, issue_iid: int) -> None:
 
 def move_issue_tool(
     project_path: str, issue_iid: int, to_project_id: int
-) -> dict[str, Any]:
+) -> dict:
     """Move an issue to a different project.
 
     Args:
@@ -516,7 +516,7 @@ def move_issue_tool(
 
 def comment_on_issue_tool(
     project_path: str, issue_iid: int, body: str
-) -> dict[str, Any]:
+) -> dict:
     """Create a comment on an issue in a GitLab project.
 
     Args:
@@ -525,31 +525,27 @@ def comment_on_issue_tool(
         body: The content of the comment.
 
     Returns:
-        Dict[str, Any]: The created comment.
+        dict: The created comment.
 
     Raises:
         ValueError: If the GitLab API returns an error.
     """
     try:
-        # Create input model
         input_model = CreateIssueCommentInput(
             project_path=project_path,
             issue_iid=issue_iid,
             body=body,
         )
-
-        # Call service function
         response = asyncio.run(comment_on_issue(input_model))
-
-        # Return the comment data
-        return response
     except GitLabAPIError as exc:
         raise ValueError(str(exc)) from exc
+    else:
+        return response
 
 
 def list_issue_comments_tool(
     project_path: str, issue_iid: int, page: int = 1, per_page: int = 20
-) -> list[dict[str, Any]]:
+) -> list[dict]:
     """List comments on an issue in a GitLab project.
 
     Args:
@@ -559,30 +555,26 @@ def list_issue_comments_tool(
         per_page: The number of items per page.
 
     Returns:
-        List[Dict[str, Any]]: The list of comments.
+        list[dict]: The list of comments.
 
     Raises:
         ValueError: If the GitLab API returns an error.
     """
     try:
-        # Create input model
         input_model = ListIssueCommentsInput(
             project_path=project_path,
             issue_iid=issue_iid,
             page=page,
             per_page=per_page,
         )
-
-        # Call service function
         response = asyncio.run(list_issue_comments(input_model))
-
-        # Return the comments data
-        return cast(list[dict[str, Any]], response)
     except GitLabAPIError as exc:
         raise ValueError(str(exc)) from exc
+    else:
+        return response
 
 
-def list_issue_links_tool(project_path: str, issue_iid: int) -> list[dict[str, Any]]:
+def list_issue_links_tool(project_path: str, issue_iid: int) -> list[dict]:
     """List links to an issue.
 
     Args:
@@ -613,7 +605,7 @@ def list_issue_links_tool(project_path: str, issue_iid: int) -> list[dict[str, A
 
 def get_issue_link_tool(
     project_path: str, issue_iid: int, issue_link_id: int
-) -> dict[str, Any]:
+) -> dict:
     """Get details about an issue link.
 
     Args:
@@ -650,7 +642,7 @@ def create_issue_link_tool(
     target_project_id: str,
     target_issue_iid: int,
     link_type: str = "relates_to",
-) -> dict[str, Any]:
+) -> dict:
     """Create a link between issues.
 
     Args:
@@ -690,7 +682,7 @@ def create_issue_link_tool(
 
 def delete_issue_link_tool(
     project_path: str, issue_iid: int, issue_link_id: int
-) -> dict[str, Any]:
+) -> dict:
     """Delete a link between issues.
 
     Args:

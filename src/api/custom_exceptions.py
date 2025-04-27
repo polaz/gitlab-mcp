@@ -14,11 +14,6 @@ class GitLabErrorType(str, Enum):
     SERVER_ERROR = "server_error"
     INVALID_TOKEN = "invalid_token"
     REQUEST_FAILED = "request_failed"
-    FILE_CONTENT_ERROR = "file_content_error"
-    FILE_CREATE_ERROR = "file_create_error"
-    FILE_UPDATE_ERROR = "file_update_error"
-    FILE_DELETE_ERROR = "file_delete_error"
-    FILE_BLAME_ERROR = "file_blame_error"
 
 
 class GitLabAPIError(Exception):
@@ -42,7 +37,12 @@ class GitLabAPIError(Exception):
         GitLabErrorType.REQUEST_FAILED: "Request failed",
     }
 
-    def __init__(self, error_type: GitLabErrorType, details: dict[str, Any] | None = None, code: int | None = None) -> None:
+    def __init__(
+        self,
+        error_type: GitLabErrorType,
+        details: dict[str, Any] | None = None,
+        code: int | None = None,
+    ) -> None:
         """Initialize the GitLab API error.
 
         Args:
@@ -61,7 +61,9 @@ class GitLabAPIError(Exception):
         super().__init__(message)
 
     @classmethod
-    def from_response(cls, response: Any, details: dict[str, Any] | None = None) -> "GitLabAPIError":
+    def from_response(
+        cls, response: Any, details: dict[str, Any] | None = None
+    ) -> "GitLabAPIError":
         """Create an error from an HTTP response.
 
         Args:

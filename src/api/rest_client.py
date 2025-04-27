@@ -2,7 +2,6 @@
 
 import os
 from collections.abc import AsyncIterator
-from http import HTTPStatus
 from typing import Any
 
 import httpx

@@ -60,16 +60,22 @@ async def get_file_contents(input_model: GetFileContentsInput) -> GitLabContent:
         if "not found" in str(exc).lower():
             raise GitLabAPIError(
                 GitLabErrorType.NOT_FOUND,
-                {"message": f"File {input_model.file_path} not found"}
+                {"message": f"File {input_model.file_path} not found"},
             ) from exc
         raise GitLabAPIError(
-            GitLabErrorType.FILE_CONTENT_ERROR,
-            {"message": f"Failed to get file content for {input_model.file_path}", "operation": "get_file_contents"}
+            GitLabErrorType.REQUEST_FAILED,
+            {
+                "message": f"Failed to get file content for {input_model.file_path}",
+                "operation": "get_file_contents",
+            },
         ) from exc
     except Exception as exc:
         raise GitLabAPIError(
             GitLabErrorType.SERVER_ERROR,
-            {"message": "Internal error retrieving file content", "operation": "get_file_contents"}
+            {
+                "message": "Internal error retrieving file content",
+                "operation": "get_file_contents",
+            },
         ) from exc
 
 
@@ -106,16 +112,22 @@ async def get_raw_file_contents(input_model: GetRawFileContentsInput) -> bytes:
         if "not found" in str(exc).lower():
             raise GitLabAPIError(
                 GitLabErrorType.NOT_FOUND,
-                {"message": f"File {input_model.file_path} not found"}
+                {"message": f"File {input_model.file_path} not found"},
             ) from exc
         raise GitLabAPIError(
-            GitLabErrorType.FILE_CONTENT_ERROR,
-            {"message": f"Failed to get raw file content for {input_model.file_path}", "operation": "get_raw_file_contents"}
+            GitLabErrorType.REQUEST_FAILED,
+            {
+                "message": f"Failed to get raw file content for {input_model.file_path}",
+                "operation": "get_raw_file_contents",
+            },
         ) from exc
     except Exception as exc:
         raise GitLabAPIError(
             GitLabErrorType.SERVER_ERROR,
-            {"message": "Internal error retrieving raw file content", "operation": "get_raw_file_contents"}
+            {
+                "message": "Internal error retrieving raw file content",
+                "operation": "get_raw_file_contents",
+            },
         ) from exc
     else:
         return response.content
@@ -159,16 +171,19 @@ async def create_file(input_model: CreateFileInput) -> FileOperationResponse:
         if "already exists" in str(exc).lower():
             raise GitLabAPIError(
                 GitLabErrorType.INVALID_REQUEST,
-                {"message": f"File {input_model.file_path} already exists"}
+                {"message": f"File {input_model.file_path} already exists"},
             ) from exc
         raise GitLabAPIError(
-            GitLabErrorType.FILE_CREATE_ERROR,
-            {"message": f"Failed to create file {input_model.file_path}", "operation": "create_file"}
+            GitLabErrorType.REQUEST_FAILED,
+            {
+                "message": f"Failed to create file {input_model.file_path}",
+                "operation": "create_file",
+            },
         ) from exc
     except Exception as exc:
         raise GitLabAPIError(
             GitLabErrorType.SERVER_ERROR,
-            {"message": "Internal error creating file", "operation": "create_file"}
+            {"message": "Internal error creating file", "operation": "create_file"},
         ) from exc
 
 
@@ -213,16 +228,19 @@ async def update_file(input_model: UpdateFileInput) -> FileOperationResponse:
         if "not exist" in str(exc).lower():
             raise GitLabAPIError(
                 GitLabErrorType.NOT_FOUND,
-                {"message": f"File {input_model.file_path} not found"}
+                {"message": f"File {input_model.file_path} not found"},
             ) from exc
         raise GitLabAPIError(
-            GitLabErrorType.FILE_UPDATE_ERROR,
-            {"message": f"Failed to update file {input_model.file_path}", "operation": "update_file"}
+            GitLabErrorType.REQUEST_FAILED,
+            {
+                "message": f"Failed to update file {input_model.file_path}",
+                "operation": "update_file",
+            },
         ) from exc
     except Exception as exc:
         raise GitLabAPIError(
             GitLabErrorType.SERVER_ERROR,
-            {"message": "Internal error updating file", "operation": "update_file"}
+            {"message": "Internal error updating file", "operation": "update_file"},
         ) from exc
 
 
@@ -254,16 +272,19 @@ async def delete_file(input_model: DeleteFileInput) -> None:
         if "not exist" in str(exc).lower():
             raise GitLabAPIError(
                 GitLabErrorType.NOT_FOUND,
-                {"message": f"File {input_model.file_path} not found"}
+                {"message": f"File {input_model.file_path} not found"},
             ) from exc
         raise GitLabAPIError(
-            GitLabErrorType.FILE_DELETE_ERROR,
-            {"message": f"Failed to delete file {input_model.file_path}", "operation": "delete_file"}
+            GitLabErrorType.REQUEST_FAILED,
+            {
+                "message": f"Failed to delete file {input_model.file_path}",
+                "operation": "delete_file",
+            },
         ) from exc
     except Exception as exc:
         raise GitLabAPIError(
             GitLabErrorType.SERVER_ERROR,
-            {"message": "Internal error deleting file", "operation": "delete_file"}
+            {"message": "Internal error deleting file", "operation": "delete_file"},
         ) from exc
 
 
@@ -300,16 +321,22 @@ async def get_file_blame(input_model: GetFileBlameInput) -> list[FileBlameRange]
         if "not exist" in str(exc).lower():
             raise GitLabAPIError(
                 GitLabErrorType.NOT_FOUND,
-                {"message": f"File {input_model.file_path} not found"}
+                {"message": f"File {input_model.file_path} not found"},
             ) from exc
         raise GitLabAPIError(
-            GitLabErrorType.FILE_BLAME_ERROR,
-            {"message": f"Failed to get blame information for {input_model.file_path}", "operation": "get_file_blame"}
+            GitLabErrorType.REQUEST_FAILED,
+            {
+                "message": f"Failed to get blame information for {input_model.file_path}",
+                "operation": "get_file_blame",
+            },
         ) from exc
     except Exception as exc:
         raise GitLabAPIError(
             GitLabErrorType.SERVER_ERROR,
-            {"message": "Internal error getting file blame information", "operation": "get_file_blame"}
+            {
+                "message": "Internal error getting file blame information",
+                "operation": "get_file_blame",
+            },
         ) from exc
     else:
         # Convert to our schema
