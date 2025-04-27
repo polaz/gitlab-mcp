@@ -5,12 +5,12 @@ from typing import Any, cast
 
 from src.api.custom_exceptions import GitLabAPIError, GitLabErrorType
 from src.api.rest_client import gitlab_rest_client
+from src.schemas.base import PaginatedResponse
 from src.schemas.merge_requests import (
     AcceptedMergeRequest,
     CreateMergeRequestInput,
     GitLabComment,
     GitLabMergeRequest,
-    GitLabMergeRequestListResponse,
     ListMergeRequestsInput,
     MergeRequestChanges,
     MergeRequestSuggestion,
@@ -75,14 +75,14 @@ async def create_merge_request(
 
 async def list_merge_requests(
     input_model: ListMergeRequestsInput,
-) -> GitLabMergeRequestListResponse:
+) -> PaginatedResponse[GitLabMergeRequest]:
     """List merge requests for a project.
 
     Args:
         input_model: The input model containing query parameters.
 
     Returns:
-        GitLabMergeRequestListResponse: A list of merge requests.
+        PaginatedResponse[GitLabMergeRequest]: A paginated response of merge requests.
 
     Raises:
         GitLabAPIError: If retrieving the merge requests fails.
@@ -110,9 +110,12 @@ async def list_merge_requests(
             params=params,
         )
 
-        return GitLabMergeRequestListResponse(
-            items=[GitLabMergeRequest.model_validate(mr) for mr in response]
-        )
+        # Try to get pagination count from headers if available (simulate for now)
+        # In a real implementation, headers would be available from the HTTP client
+        count = len(response)
+        items = [GitLabMergeRequest.model_validate(mr) for mr in response]
+
+        return PaginatedResponse[GitLabMergeRequest](count=count, items=items)
     except GitLabAPIError as exc:
         raise GitLabAPIError(
             GitLabErrorType.REQUEST_FAILED,

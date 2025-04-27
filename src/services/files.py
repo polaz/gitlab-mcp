@@ -7,11 +7,8 @@ from src.api.rest_client import gitlab_rest_client
 from src.schemas.files import (
     CreateFileInput,
     DeleteFileInput,
-    FileBlameRange,
     FileOperationResponse,
-    GetFileBlameInput,
     GetFileContentsInput,
-    GetRawFileContentsInput,
     GitLabContent,
     UpdateFileInput,
 )
@@ -78,59 +75,6 @@ async def get_file_contents(input_model: GetFileContentsInput) -> GitLabContent:
             },
         ) from exc
 
-
-async def get_raw_file_contents(input_model: GetRawFileContentsInput) -> bytes:
-    """Retrieve the raw contents of a file from a GitLab repository using the REST API.
-
-    Args:
-        input_model: The input model containing project path, file path, and ref.
-
-    Returns:
-        bytes: The raw file contents.
-
-    Raises:
-        GitLabAPIError: If retrieving the raw file content fails.
-    """
-    try:
-        project_path = gitlab_rest_client._encode_path_parameter(
-            input_model.project_path
-        )
-        ref = input_model.ref or "main"
-        file_path = gitlab_rest_client._encode_path_parameter(input_model.file_path)
-
-        endpoint = f"/projects/{project_path}/repository/files/{file_path}/raw"
-        params = {"ref": ref}
-
-        # This requires custom handling since we need the raw response
-        client = gitlab_rest_client.get_httpx_client()
-        headers = gitlab_rest_client._get_headers()
-
-        response = await client.get(endpoint, headers=headers, params=params)
-        if not response.is_success:
-            gitlab_rest_client._handle_error_response(response)
-    except GitLabAPIError as exc:
-        if "not found" in str(exc).lower():
-            raise GitLabAPIError(
-                GitLabErrorType.NOT_FOUND,
-                {"message": f"File {input_model.file_path} not found"},
-            ) from exc
-        raise GitLabAPIError(
-            GitLabErrorType.REQUEST_FAILED,
-            {
-                "message": f"Failed to get raw file content for {input_model.file_path}",
-                "operation": "get_raw_file_contents",
-            },
-        ) from exc
-    except Exception as exc:
-        raise GitLabAPIError(
-            GitLabErrorType.SERVER_ERROR,
-            {
-                "message": "Internal error retrieving raw file content",
-                "operation": "get_raw_file_contents",
-            },
-        ) from exc
-    else:
-        return response.content
 
 
 async def create_file(input_model: CreateFileInput) -> FileOperationResponse:
@@ -287,64 +231,3 @@ async def delete_file(input_model: DeleteFileInput) -> None:
             {"message": "Internal error deleting file", "operation": "delete_file"},
         ) from exc
 
-
-async def get_file_blame(input_model: GetFileBlameInput) -> list[FileBlameRange]:
-    """Retrieve blame information for a file in a GitLab repository using the REST API.
-
-    Args:
-        input_model: The input model containing project path, file path, and ref.
-
-    Returns:
-        list[FileBlameRange]: List of blame ranges with associated commits and lines.
-
-    Raises:
-        GitLabAPIError: If retrieving blame information fails or the file doesn't exist.
-    """
-    try:
-        project_path = gitlab_rest_client._encode_path_parameter(
-            input_model.project_path
-        )
-        file_path = gitlab_rest_client._encode_path_parameter(input_model.file_path)
-
-        endpoint = f"/projects/{project_path}/repository/files/{file_path}/blame"
-
-        # Prepare params
-        params = {"ref": input_model.ref}
-
-        # Add range parameters if provided
-        if input_model.range_start is not None and input_model.range_end is not None:
-            params["range[start]"] = str(input_model.range_start)
-            params["range[end]"] = str(input_model.range_end)
-
-        blame_data = await gitlab_rest_client.get_async(endpoint, params=params)
-    except GitLabAPIError as exc:
-        if "not exist" in str(exc).lower():
-            raise GitLabAPIError(
-                GitLabErrorType.NOT_FOUND,
-                {"message": f"File {input_model.file_path} not found"},
-            ) from exc
-        raise GitLabAPIError(
-            GitLabErrorType.REQUEST_FAILED,
-            {
-                "message": f"Failed to get blame information for {input_model.file_path}",
-                "operation": "get_file_blame",
-            },
-        ) from exc
-    except Exception as exc:
-        raise GitLabAPIError(
-            GitLabErrorType.SERVER_ERROR,
-            {
-                "message": "Internal error getting file blame information",
-                "operation": "get_file_blame",
-            },
-        ) from exc
-    else:
-        # Convert to our schema
-        blame_ranges = []
-        for range_data in blame_data:
-            blame_range = FileBlameRange(
-                commit=range_data["commit"],
-                lines=range_data["lines"],
-            )
-            blame_ranges.append(blame_range)
-        return blame_ranges

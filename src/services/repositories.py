@@ -8,7 +8,7 @@ from src.api.rest_client import gitlab_rest_client
 from src.schemas.repositories import CreateRepositoryInput, GitLabRepository
 
 
-def create_repository(input_model: CreateRepositoryInput) -> GitLabRepository:
+async def create_repository(input_model: CreateRepositoryInput) -> GitLabRepository:
     """Create a new GitLab repository using the REST API.
 
     Args:
@@ -21,21 +21,13 @@ def create_repository(input_model: CreateRepositoryInput) -> GitLabRepository:
         GitLabAPIError: If the GitLab API returns an error.
     """
     try:
-        data = {
+        payload = {
             "name": input_model.name,
             "description": input_model.description,
             "visibility": input_model.visibility.value,
             "initialize_with_readme": input_model.initialize_with_readme,
         }
-        client = gitlab_rest_client.get_httpx_client()
-        loop = asyncio.get_event_loop()
-        response = loop.run_until_complete(
-            client.post(
-                "/projects",
-                headers=gitlab_rest_client._get_headers(),
-                json=data,
-            )
-        )
+        response = await gitlab_rest_client.post_async("/projects", json_data=payload)
         project = response.json()
         return GitLabRepository(
             id=project["id"],
@@ -50,8 +42,10 @@ def create_repository(input_model: CreateRepositoryInput) -> GitLabRepository:
     except Exception as exc:
         raise GitLabAPIError(
             GitLabErrorType.SERVER_ERROR,
-            {"message": f"Internal error creating repository: {exc!s}",
-             "operation": "create_repository"}
+            {
+                "message": f"Internal error creating repository: {exc!s}",
+                "operation": "create_repository",
+            },
         ) from exc
 
 
@@ -97,16 +91,20 @@ async def list_repository_tree(
         if "not found" in str(exc).lower():
             raise GitLabAPIError(
                 GitLabErrorType.NOT_FOUND,
-                {"message": f"Project {project_path} or path {path} not found"}
+                {"message": f"Project {project_path} or path {path} not found"},
             ) from exc
         raise GitLabAPIError(
             GitLabErrorType.REQUEST_FAILED,
-            {"message": f"Failed to list repository contents for {project_path}",
-             "operation": "list_repository_contents"}
+            {
+                "message": f"Failed to list repository contents for {project_path}",
+                "operation": "list_repository_contents",
+            },
         ) from exc
     except Exception as exc:
         raise GitLabAPIError(
             GitLabErrorType.SERVER_ERROR,
-            {"message": "Internal error listing repository contents",
-             "operation": "list_repository_contents"}
+            {
+                "message": "Internal error listing repository contents",
+                "operation": "list_repository_contents",
+            },
         ) from exc

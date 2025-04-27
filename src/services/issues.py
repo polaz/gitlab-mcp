@@ -47,9 +47,7 @@ async def list_all_issues(input_model: ListIssuesInput) -> GitLabIssueListRespon
 
         return GitLabIssueListResponse(
             items=items,
-            page=input_model.page,
-            per_page=input_model.per_page,
-            total_count=total_count,
+            count=total_count,
         )
     except GitLabAPIError as exc:
         raise GitLabAPIError(
