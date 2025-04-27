@@ -1,18 +1,10 @@
-# filepath: c:\Users\aditp\Desktop\python\gitlab-mcp-main\src\services\branches.py
 """Service functions for interacting with GitLab branches using the REST API."""
 
 from typing import cast
 
-from src.api import (
-    BranchCreationError,
-    BranchDeleteError,
-    BranchListError,
-    BranchProtectionError,
-    DefaultBranchError,
-    MergedBranchesDeleteError,
-)
+from src.api.custom_exceptions import GitLabAPIError, GitLabErrorType
 from src.api.rest_client import gitlab_rest_client
-from src.schemas import (
+from src.schemas.branches import (
     CreateBranchInput,
     DeleteBranchInput,
     DeleteMergedBranchesInput,
@@ -26,7 +18,6 @@ from src.schemas import (
 )
 
 
-# Asynchronous implementations
 async def create_branch(input_model: CreateBranchInput) -> GitLabReference:
     """Create a new branch in a GitLab repository using the REST API.
 
@@ -37,7 +28,7 @@ async def create_branch(input_model: CreateBranchInput) -> GitLabReference:
         GitLabReference: The created branch details.
 
     Raises:
-        BranchCreationError: If the branch creation operation fails.
+        GitLabAPIError: If the branch creation operation fails.
     """
     try:
         project_path = gitlab_rest_client._encode_path_parameter(
@@ -52,12 +43,25 @@ async def create_branch(input_model: CreateBranchInput) -> GitLabReference:
             name=data["name"],
             commit=data["commit"],
         )
+    except GitLabAPIError as exc:
+        if "already exists" in str(exc).lower():
+            raise GitLabAPIError(
+                GitLabErrorType.INVALID_REQUEST,
+                {"message": f"Branch {input_model.branch_name} already exists"}
+            ) from exc
+        raise GitLabAPIError(
+            GitLabErrorType.REQUEST_FAILED,
+            {"message": f"Failed to create branch {input_model.branch_name}", "operation": "create_branch"}
+        ) from exc
     except Exception as exc:
-        raise BranchCreationError(cause=exc) from exc
+        raise GitLabAPIError(
+            GitLabErrorType.SERVER_ERROR,
+            {"message": "Internal error during branch creation", "operation": "create_branch"}
+        ) from exc
 
 
 async def get_default_branch_ref(input_model: GetDefaultBranchRefInput) -> str:
-    """Get the default branch reference for a GitLab repository using the REST API.
+    """Get the default branch reference for a GitLab repository.
 
     Args:
         input_model: The input model containing project path.
@@ -66,7 +70,7 @@ async def get_default_branch_ref(input_model: GetDefaultBranchRefInput) -> str:
         str: The default branch reference.
 
     Raises:
-        DefaultBranchError: If retrieving the default branch information fails.
+        GitLabAPIError: If retrieving the default branch information fails.
     """
     try:
         project_path = gitlab_rest_client._encode_path_parameter(
@@ -76,8 +80,16 @@ async def get_default_branch_ref(input_model: GetDefaultBranchRefInput) -> str:
 
         data = await gitlab_rest_client.get_async(endpoint)
         return cast(str, data["default_branch"])
+    except GitLabAPIError as exc:
+        raise GitLabAPIError(
+            GitLabErrorType.REQUEST_FAILED,
+            {"message": "Failed to get default branch", "operation": "get_default_branch"}
+        ) from exc
     except Exception as exc:
-        raise DefaultBranchError(cause=exc) from exc
+        raise GitLabAPIError(
+            GitLabErrorType.SERVER_ERROR,
+            {"message": "Internal error getting default branch", "operation": "get_default_branch"}
+        ) from exc
 
 
 async def list_branches(input_model: ListBranchesInput) -> GitLabBranchList:
@@ -90,7 +102,7 @@ async def list_branches(input_model: ListBranchesInput) -> GitLabBranchList:
         GitLabBranchList: List of branches in the repository.
 
     Raises:
-        BranchListError: If listing branches fails.
+        GitLabAPIError: If listing branches fails.
     """
     try:
         project_path = gitlab_rest_client._encode_path_parameter(
@@ -106,8 +118,16 @@ async def list_branches(input_model: ListBranchesInput) -> GitLabBranchList:
 
         branches = [GitLabReference(**branch) for branch in data]
         return GitLabBranchList(items=branches)
+    except GitLabAPIError as exc:
+        raise GitLabAPIError(
+            GitLabErrorType.REQUEST_FAILED,
+            {"message": "Failed to list branches", "operation": "list_branches"}
+        ) from exc
     except Exception as exc:
-        raise BranchListError(cause=exc) from exc
+        raise GitLabAPIError(
+            GitLabErrorType.SERVER_ERROR,
+            {"message": "Internal error listing branches", "operation": "list_branches"}
+        ) from exc
 
 
 async def get_branch(input_model: GetBranchInput) -> GitLabReference:
@@ -120,7 +140,7 @@ async def get_branch(input_model: GetBranchInput) -> GitLabReference:
         GitLabReference: Details of the specified branch.
 
     Raises:
-        BranchListError: If retrieving branch details fails.
+        GitLabAPIError: If retrieving branch details fails.
     """
     try:
         project_path = gitlab_rest_client._encode_path_parameter(
@@ -132,8 +152,21 @@ async def get_branch(input_model: GetBranchInput) -> GitLabReference:
         data = await gitlab_rest_client.get_async(endpoint)
 
         return GitLabReference(**data)
+    except GitLabAPIError as exc:
+        if "not found" in str(exc).lower():
+            raise GitLabAPIError(
+                GitLabErrorType.NOT_FOUND,
+                {"message": f"Branch {input_model.branch_name} not found"}
+            ) from exc
+        raise GitLabAPIError(
+            GitLabErrorType.REQUEST_FAILED,
+            {"message": f"Failed to get branch {input_model.branch_name}", "operation": "get_branch"}
+        ) from exc
     except Exception as exc:
-        raise BranchListError(cause=exc) from exc
+        raise GitLabAPIError(
+            GitLabErrorType.SERVER_ERROR,
+            {"message": "Internal error getting branch", "operation": "get_branch"}
+        ) from exc
 
 
 async def delete_branch(input_model: DeleteBranchInput) -> None:
@@ -143,7 +176,7 @@ async def delete_branch(input_model: DeleteBranchInput) -> None:
         input_model: The input model containing project path and branch name.
 
     Raises:
-        BranchDeleteError: If deleting the branch fails.
+        GitLabAPIError: If deleting the branch fails.
     """
     try:
         project_path = gitlab_rest_client._encode_path_parameter(
@@ -153,8 +186,21 @@ async def delete_branch(input_model: DeleteBranchInput) -> None:
         endpoint = f"/projects/{project_path}/repository/branches/{branch_name}"
 
         await gitlab_rest_client.delete_async(endpoint)
+    except GitLabAPIError as exc:
+        if "not found" in str(exc).lower():
+            raise GitLabAPIError(
+                GitLabErrorType.NOT_FOUND,
+                {"message": f"Branch {input_model.branch_name} not found"}
+            ) from exc
+        raise GitLabAPIError(
+            GitLabErrorType.REQUEST_FAILED,
+            {"message": f"Failed to delete branch {input_model.branch_name}", "operation": "delete_branch"}
+        ) from exc
     except Exception as exc:
-        raise BranchDeleteError(cause=exc) from exc
+        raise GitLabAPIError(
+            GitLabErrorType.SERVER_ERROR,
+            {"message": "Internal error deleting branch", "operation": "delete_branch"}
+        ) from exc
 
 
 async def delete_merged_branches(input_model: DeleteMergedBranchesInput) -> None:
@@ -164,7 +210,7 @@ async def delete_merged_branches(input_model: DeleteMergedBranchesInput) -> None
         input_model: The input model containing project path.
 
     Raises:
-        MergedBranchesDeleteError: If deleting merged branches fails.
+        GitLabAPIError: If deleting merged branches fails.
     """
     try:
         project_path = gitlab_rest_client._encode_path_parameter(
@@ -173,8 +219,16 @@ async def delete_merged_branches(input_model: DeleteMergedBranchesInput) -> None
         endpoint = f"/projects/{project_path}/repository/merged_branches"
 
         await gitlab_rest_client.delete_async(endpoint)
+    except GitLabAPIError as exc:
+        raise GitLabAPIError(
+            GitLabErrorType.REQUEST_FAILED,
+            {"message": "Failed to delete merged branches", "operation": "delete_merged_branches"}
+        ) from exc
     except Exception as exc:
-        raise MergedBranchesDeleteError(cause=exc) from exc
+        raise GitLabAPIError(
+            GitLabErrorType.SERVER_ERROR,
+            {"message": "Internal error deleting merged branches", "operation": "delete_merged_branches"}
+        ) from exc
 
 
 async def protect_branch(input_model: ProtectBranchInput) -> None:
@@ -184,7 +238,7 @@ async def protect_branch(input_model: ProtectBranchInput) -> None:
         input_model: The input model with protection settings.
 
     Raises:
-        BranchProtectionError: If protecting the branch fails.
+        GitLabAPIError: If protecting the branch fails.
     """
     try:
         project_path = gitlab_rest_client._encode_path_parameter(
@@ -212,8 +266,16 @@ async def protect_branch(input_model: ProtectBranchInput) -> None:
         }
 
         await gitlab_rest_client.post_async(endpoint, json_data=payload)
+    except GitLabAPIError as exc:
+        raise GitLabAPIError(
+            GitLabErrorType.REQUEST_FAILED,
+            {"message": f"Failed to protect branch {input_model.branch_name}", "operation": "protect_branch"}
+        ) from exc
     except Exception as exc:
-        raise BranchProtectionError(cause=exc) from exc
+        raise GitLabAPIError(
+            GitLabErrorType.SERVER_ERROR,
+            {"message": "Internal error protecting branch", "operation": "protect_branch"}
+        ) from exc
 
 
 async def unprotect_branch(input_model: UnprotectBranchInput) -> None:
@@ -223,7 +285,7 @@ async def unprotect_branch(input_model: UnprotectBranchInput) -> None:
         input_model: The input model containing project path and branch name.
 
     Raises:
-        BranchProtectionError: If unprotecting the branch fails.
+        GitLabAPIError: If unprotecting the branch fails.
     """
     try:
         project_path = gitlab_rest_client._encode_path_parameter(
@@ -233,5 +295,18 @@ async def unprotect_branch(input_model: UnprotectBranchInput) -> None:
         endpoint = f"/projects/{project_path}/protected_branches/{branch_name}"
 
         await gitlab_rest_client.delete_async(endpoint)
+    except GitLabAPIError as exc:
+        if "not found" in str(exc).lower():
+            raise GitLabAPIError(
+                GitLabErrorType.NOT_FOUND,
+                {"message": f"Protected branch {input_model.branch_name} not found"}
+            ) from exc
+        raise GitLabAPIError(
+            GitLabErrorType.REQUEST_FAILED,
+            {"message": f"Failed to unprotect branch {input_model.branch_name}", "operation": "unprotect_branch"}
+        ) from exc
     except Exception as exc:
-        raise BranchProtectionError(cause=exc) from exc
+        raise GitLabAPIError(
+            GitLabErrorType.SERVER_ERROR,
+            {"message": "Internal error unprotecting branch", "operation": "unprotect_branch"}
+        ) from exc

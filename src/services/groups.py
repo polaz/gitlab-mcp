@@ -1,7 +1,8 @@
 """Service functions for interacting with GitLab groups using the REST API."""
 
-from src.api import gitlab_rest_client
-from src.schemas import (
+from src.api.custom_exceptions import GitLabAPIError, GitLabErrorType
+from src.api.rest_client import gitlab_rest_client
+from src.schemas.groups import (
     GetGroupByProjectNamespaceInput,
     GetGroupInput,
     GitLabGroup,
@@ -39,20 +40,25 @@ async def list_groups(input_model: ListGroupsInput) -> GitLabGroupListResponse:
     if input_model.top_level_only:
         params["top_level_only"] = "true"
 
-    # Make the API call
-    response_data = await gitlab_rest_client.get_async("/groups", params=params)
+    try:
+        # Make the API call
+        response_data = await gitlab_rest_client.get_async("/groups", params=params)
 
-    # Get total count - in a real implementation we would use the headers
-    # For now, just use the length of the response
-    total_count = len(response_data)
+        # Get total count - in a real implementation we would use the headers
+        # For now, just use the length of the response
+        total_count = len(response_data)
 
-    # Parse the response into our schema
-    items = [GitLabGroup.model_validate(group) for group in response_data]
+        # Parse the response into our schema
+        items = [GitLabGroup.model_validate(group) for group in response_data]
 
-    return GitLabGroupListResponse(
-        items=items,
-        count=total_count,
-    )
+        return GitLabGroupListResponse(
+            items=items,
+            count=total_count,
+        )
+    except GitLabAPIError:
+        raise  # Re-raise GitLabAPIError as is
+    except Exception as exc:
+        raise GitLabAPIError(GitLabErrorType.SERVER_ERROR, {"operation": "list_groups"}, code=500) from exc
 
 
 async def get_group(input_model: GetGroupInput) -> GitLabGroup:
@@ -65,16 +71,31 @@ async def get_group(input_model: GetGroupInput) -> GitLabGroup:
         GitLabGroup: The requested group.
 
     Raises:
-        GitLabAPIError: If retrieving the group fails.
+        GitLabAPIError: If the group does not exist or if retrieving the group fails.
     """
     # Encode the group ID/path
     group_id = gitlab_rest_client._encode_path_parameter(input_model.group_id)
 
-    # Make the API call
-    response = await gitlab_rest_client.get_async(f"/groups/{group_id}")
+    try:
+        # Make the API call
+        response = await gitlab_rest_client.get_async(f"/groups/{group_id}")
 
-    # Parse the response into our schema
-    return GitLabGroup.model_validate(response)
+        # Parse the response into our schema
+        return GitLabGroup.model_validate(response)
+    except GitLabAPIError as exc:
+        if "not found" in str(exc).lower():
+            raise GitLabAPIError(
+                GitLabErrorType.NOT_FOUND,
+                {"group_id": input_model.group_id},
+                code=404
+            ) from exc
+        raise  # Re-raise original GitLabAPIError for other API errors
+    except Exception as exc:
+        raise GitLabAPIError(
+            GitLabErrorType.SERVER_ERROR,
+            {"operation": "get_group", "group_id": input_model.group_id},
+            code=500
+        ) from exc
 
 
 async def get_group_by_project_namespace(
@@ -89,14 +110,30 @@ async def get_group_by_project_namespace(
         GitLabGroup: The requested group.
 
     Raises:
-        GitLabAPIError: If retrieving the group fails.
+        GroupNamespaceError: If retrieving the group for the namespace fails.
+        GitLabAPIError: If retrieving the group fails for other reasons.
     """
     # In GitLab, the project namespace is the group path or subgroup path
     # We'll encode it as a path parameter
     namespace = gitlab_rest_client._encode_path_parameter(input_model.project_namespace)
 
-    # Make the API call
-    response = await gitlab_rest_client.get_async(f"/groups/{namespace}")
+    try:
+        # Make the API call
+        response = await gitlab_rest_client.get_async(f"/groups/{namespace}")
 
-    # Parse the response into our schema
-    return GitLabGroup.model_validate(response)
+        # Parse the response into our schema
+        return GitLabGroup.model_validate(response)
+    except GitLabAPIError as exc:
+        if "not found" in str(exc).lower():
+            raise GitLabAPIError(
+                GitLabErrorType.NOT_FOUND,
+                {"namespace": input_model.project_namespace},
+                code=404
+            ) from exc
+        raise  # Re-raise original GitLabAPIError for other API errors
+    except Exception as exc:
+        raise GitLabAPIError(
+            GitLabErrorType.SERVER_ERROR,
+            {"operation": "get_group_by_namespace", "namespace": input_model.project_namespace},
+            code=500
+        ) from exc

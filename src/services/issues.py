@@ -2,8 +2,8 @@
 
 from typing import Any, cast
 
-from src.api import gitlab_rest_client
-from src.schemas import (
+from src.api.rest_client import gitlab_rest_client
+from src.schemas.issues import (
     CreateIssueCommentInput,
     CreateIssueInput,
     CreateIssueLinkInput,
