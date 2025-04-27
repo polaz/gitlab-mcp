@@ -187,14 +187,17 @@ async def get_branch(input_model: GetBranchInput) -> GitLabReference:
         ) from exc
 
 
-async def delete_branch(input_model: DeleteBranchInput) -> None:
+async def delete_branch(input_model: DeleteBranchInput) -> bool:
     """Delete a branch from a GitLab repository.
 
     Args:
         input_model: The input model containing project path and branch name.
 
+    Returns:
+        bool: True if the branch was deleted, False if it was not found.
+
     Raises:
-        GitLabAPIError: If deleting the branch fails.
+        GitLabAPIError: If deleting the branch fails unexpectedly.
     """
     try:
         project_path = gitlab_rest_client._encode_path_parameter(
@@ -202,14 +205,11 @@ async def delete_branch(input_model: DeleteBranchInput) -> None:
         )
         branch_name = gitlab_rest_client._encode_path_parameter(input_model.branch_name)
         endpoint = f"/projects/{project_path}/repository/branches/{branch_name}"
-
         await gitlab_rest_client.delete_async(endpoint)
+        return True
     except GitLabAPIError as exc:
         if "not found" in str(exc).lower():
-            raise GitLabAPIError(
-                GitLabErrorType.NOT_FOUND,
-                {"message": f"Branch {input_model.branch_name} not found"},
-            ) from exc
+            return False
         raise GitLabAPIError(
             GitLabErrorType.REQUEST_FAILED,
             {
@@ -220,15 +220,21 @@ async def delete_branch(input_model: DeleteBranchInput) -> None:
     except Exception as exc:
         raise GitLabAPIError(
             GitLabErrorType.SERVER_ERROR,
-            {"message": "Internal error deleting branch", "operation": "delete_branch"},
+            {
+                "message": "Internal error deleting branch",
+                "operation": "delete_branch",
+            },
         ) from exc
 
 
-async def delete_merged_branches(input_model: DeleteMergedBranchesInput) -> None:
+async def delete_merged_branches(input_model: DeleteMergedBranchesInput) -> bool:
     """Delete all merged branches from a GitLab repository.
 
     Args:
         input_model: The input model containing project path.
+
+    Returns:
+        bool: True if branches were deleted, False otherwise.
 
     Raises:
         GitLabAPIError: If deleting merged branches fails.
@@ -240,6 +246,7 @@ async def delete_merged_branches(input_model: DeleteMergedBranchesInput) -> None
         endpoint = f"/projects/{project_path}/repository/merged_branches"
 
         await gitlab_rest_client.delete_async(endpoint)
+        return True
     except GitLabAPIError as exc:
         raise GitLabAPIError(
             GitLabErrorType.REQUEST_FAILED,
@@ -258,14 +265,17 @@ async def delete_merged_branches(input_model: DeleteMergedBranchesInput) -> None
         ) from exc
 
 
-async def protect_branch(input_model: ProtectBranchInput) -> None:
+async def protect_branch(input_model: ProtectBranchInput) -> bool:
     """Protect a branch in a GitLab repository.
 
     Args:
         input_model: The input model with protection settings.
 
+    Returns:
+        bool: True if the branch was protected successfully, False otherwise.
+
     Raises:
-        GitLabAPIError: If protecting the branch fails.
+        GitLabAPIError: If protecting the branch fails unexpectedly.
     """
     try:
         project_path = gitlab_rest_client._encode_path_parameter(
@@ -273,17 +283,14 @@ async def protect_branch(input_model: ProtectBranchInput) -> None:
         )
         endpoint = f"/projects/{project_path}/protected_branches"
 
-        # Transform the access levels to GitLab API format
         allowed_to_push = [
             {"access_level": level.access_level}
             for level in input_model.allowed_to_push
         ]
-
         allowed_to_merge = [
             {"access_level": level.access_level}
             for level in input_model.allowed_to_merge
         ]
-
         payload = {
             "name": input_model.branch_name,
             "allowed_to_push": allowed_to_push,
@@ -291,9 +298,11 @@ async def protect_branch(input_model: ProtectBranchInput) -> None:
             "allow_force_push": input_model.allow_force_push,
             "code_owner_approval_required": input_model.code_owner_approval_required,
         }
-
         await gitlab_rest_client.post_async(endpoint, json_data=payload)
+        return True
     except GitLabAPIError as exc:
+        if "already protected" in str(exc).lower():
+            return False
         raise GitLabAPIError(
             GitLabErrorType.REQUEST_FAILED,
             {
@@ -311,14 +320,17 @@ async def protect_branch(input_model: ProtectBranchInput) -> None:
         ) from exc
 
 
-async def unprotect_branch(input_model: UnprotectBranchInput) -> None:
+async def unprotect_branch(input_model: UnprotectBranchInput) -> bool:
     """Unprotect a branch in a GitLab repository.
 
     Args:
         input_model: The input model containing project path and branch name.
 
+    Returns:
+        bool: True if the branch was unprotected, False if it was not protected.
+
     Raises:
-        GitLabAPIError: If unprotecting the branch fails.
+        GitLabAPIError: If unprotecting the branch fails unexpectedly.
     """
     try:
         project_path = gitlab_rest_client._encode_path_parameter(
@@ -326,14 +338,11 @@ async def unprotect_branch(input_model: UnprotectBranchInput) -> None:
         )
         branch_name = gitlab_rest_client._encode_path_parameter(input_model.branch_name)
         endpoint = f"/projects/{project_path}/protected_branches/{branch_name}"
-
         await gitlab_rest_client.delete_async(endpoint)
+        return True
     except GitLabAPIError as exc:
         if "not found" in str(exc).lower():
-            raise GitLabAPIError(
-                GitLabErrorType.NOT_FOUND,
-                {"message": f"Protected branch {input_model.branch_name} not found"},
-            ) from exc
+            return False
         raise GitLabAPIError(
             GitLabErrorType.REQUEST_FAILED,
             {

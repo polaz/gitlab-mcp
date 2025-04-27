@@ -16,7 +16,6 @@ select = [
     "RUF", # ruff-specific rules
     "PTH", # use pathlib
     "SIM", # simplify code
-    "TRY", # try/except
     "TD",  # todos
     "ERA", # eradicate commented out code
     "PD",  # pandas

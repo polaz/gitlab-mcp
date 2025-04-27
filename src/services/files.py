@@ -89,24 +89,29 @@ async def create_file(input_model: CreateFileInput) -> FileOperationResponse:
     Raises:
         GitLabAPIError: If the file creation fails or the file already exists.
     """
+    # Explicit input validation for required fields
+    missing_fields = []
+    for field in ("project_path", "file_path", "branch", "content", "commit_message"):
+        if getattr(input_model, field, None) in (None, ""):
+            missing_fields.append(field)
+    if missing_fields:
+        raise GitLabAPIError(
+            GitLabErrorType.INVALID_REQUEST,
+            {"message": f"Missing required fields: {', '.join(missing_fields)}"},
+        )
     try:
         project_path = gitlab_rest_client._encode_path_parameter(
             input_model.project_path
         )
         file_path = gitlab_rest_client._encode_path_parameter(input_model.file_path)
-
         endpoint = f"/projects/{project_path}/repository/files/{file_path}"
-
-        # Prepare payload
         payload = {
             "branch": input_model.branch,
             "content": input_model.content,
             "commit_message": input_model.commit_message,
             "encoding": input_model.encoding,
         }
-
         await gitlab_rest_client.post_async(endpoint, json_data=payload)
-
         return FileOperationResponse(
             file_path=input_model.file_path,
             branch=input_model.branch,
@@ -188,36 +193,33 @@ async def update_file(input_model: UpdateFileInput) -> FileOperationResponse:
         ) from exc
 
 
-async def delete_file(input_model: DeleteFileInput) -> None:
+async def delete_file(input_model: DeleteFileInput) -> bool:
     """Delete a file from a GitLab repository using the REST API.
 
     Args:
         input_model: The input model containing file path, branch, and commit information.
 
+    Returns:
+        bool: True if the file was deleted, False if it was not found.
+
     Raises:
-        GitLabAPIError: If the file deletion fails or the file doesn't exist.
+        GitLabAPIError: If the file deletion fails unexpectedly.
     """
     try:
         project_path = gitlab_rest_client._encode_path_parameter(
             input_model.project_path
         )
         file_path = gitlab_rest_client._encode_path_parameter(input_model.file_path)
-
         endpoint = f"/projects/{project_path}/repository/files/{file_path}"
-
-        # Prepare params
         params = {
             "branch": input_model.branch,
             "commit_message": input_model.commit_message,
         }
-
         await gitlab_rest_client.delete_async(endpoint, params=params)
+        return True
     except GitLabAPIError as exc:
-        if "not exist" in str(exc).lower():
-            raise GitLabAPIError(
-                GitLabErrorType.NOT_FOUND,
-                {"message": f"File {input_model.file_path} not found"},
-            ) from exc
+        if "not exist" in str(exc).lower() or "not found" in str(exc).lower():
+            return False
         raise GitLabAPIError(
             GitLabErrorType.REQUEST_FAILED,
             {

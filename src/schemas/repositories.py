@@ -1,44 +1,19 @@
+from enum import Enum
+
 from src.schemas.base import (
     BaseModel,
+    BaseResponseList,
     GitLabResponseBase,
     PaginatedResponse,
     VisibilityLevel,
 )
 
 
-class ForkRepositoryInput(BaseModel):
-    """Input model for forking a GitLab repository.
-
-    Attributes:
-        project_path: The path of the project to fork (e.g., 'namespace/project').
-        target_namespace: The namespace where the fork will be created.
-    """
-
-    project_path: str
-    target_namespace: str
-
-
-class GitLabFork(GitLabResponseBase):
-    """Response model for a forked GitLab repository.
-
-    Attributes:
-        id: The unique identifier of the fork.
-        name: The name of the forked repository.
-        path: The path of the forked repository.
-        web_url: The web URL of the forked repository.
-    """
-
-    id: int
-    name: str
-    path: str
-    web_url: str
-
-
 class CreateRepositoryInput(BaseModel):
     """Input model for creating a new GitLab repository.
 
     Attributes:
-        name: The name of the repository.
+        name: The name of the repository (e.g., 'namespace/name').
         description: Optional description of the repository.
         visibility: The visibility level of the repository (private, internal, public).
         initialize_with_readme: Whether to initialize the repository with a README file.
@@ -68,6 +43,59 @@ class GitLabRepository(GitLabResponseBase):
     description: str | None = None
     web_url: str
     default_branch: str | None = None
+
+
+class TreeItemType(str, Enum):
+    """Types of items in the repository tree.
+
+    Attributes:
+        BLOB: A file.
+        TREE: A directory.
+    """
+
+    BLOB = "blob"
+    TREE = "tree"
+
+
+class ListRepositoryTreeInput(BaseModel):
+    """Input model for listing files and directories in a repository.
+
+    Attributes:
+        project_path: The path of the project (e.g., 'namespace/project').
+        path: The path inside the repository (defaults to repository root).
+        ref: The name of the branch, tag, or commit.
+        recursive: Whether to get the contents recursively.
+        per_page: Number of items to list per page.
+    """
+
+    project_path: str
+    ref: str | None = None
+    recursive: bool = False
+    per_page: int = 20
+
+
+class RepositoryTreeItem(GitLabResponseBase):
+    """Response model for an item in the repository tree.
+
+    Attributes:
+        id: SHA1 identifier of the tree item.
+        name: The name of the item.
+        type: The type of the item (blob for files, tree for directories).
+        path: The path of the item within the repository.
+        mode: File mode.
+    """
+
+    id: str
+    name: str
+    type: TreeItemType
+    path: str
+    mode: str
+
+
+class RepositoryTreeResponse(BaseResponseList[RepositoryTreeItem]):
+    """Response model for repository tree listing."""
+
+    pass
 
 
 class SearchProjectsInput(BaseModel):
