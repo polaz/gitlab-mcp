@@ -6,12 +6,12 @@ This module provides search tools for GitLab resources through the MCP server.
 import asyncio
 from typing import Any
 
-from ..api.rest_client import GitLabRestClient
-from ..schemas.search import (
+from src.api.rest_client import GitLabRestClient
+from src.schemas.search import (
     BlobSearchFilters,
     SearchScope,
 )
-from ..services.search import SearchService
+from src.services.search import SearchService
 
 
 class SearchError(ValueError):
@@ -189,15 +189,19 @@ def _search_project_by_type(
     return [result.dict() for result in results]
 
 
-def search_global_tool(search_term: str, scope: str) -> dict[str, Any]:
+def search_global_tool(search_term: str, scope: str) -> dict:
     """Search across all GitLab resources.
 
     Args:
-        search_term: The term to search for.
-        scope: The scope to search in (projects, issues, merge_requests, etc).
+        search_term (str): The term to search for.
+        scope (str): The scope to search in (projects, issues, merge_requests, etc).
 
     Returns:
-        dict[str, Any]: The search results.
+        dict: The search results, including:
+            - scope (str): The search scope.
+            - search_term (str): The search term.
+            - results (list[dict]): The sanitized search results.
+            - count (int): The number of results.
 
     Raises:
         SearchError: If the search parameters are invalid.
@@ -209,7 +213,7 @@ def search_global_tool(search_term: str, scope: str) -> dict[str, Any]:
         # Execute search
         loop, search_service = _setup_async_search()
         results = loop.run_until_complete(
-            search_service.search_globally(search_term, scope_enum)
+            search_service.search_globally(search_term, scope_enum)  # type: ignore[arg-type]
         )
 
         # Convert results to dict and sanitize
@@ -234,20 +238,27 @@ def search_project_tool(
     filename: str | None = None,
     path: str | None = None,
     extension: str | None = None,
-) -> dict[str, Any]:
+) -> dict:
     """Search within a specific project.
 
     Args:
-        project_id: The project ID or path.
-        search_term: The term to search for.
-        scope: The scope to search in (issues, merge_requests, etc).
-        ref: Branch or tag to search in (for blobs/commits).
-        filename: Filter blobs by filename pattern.
-        path: Filter blobs by path pattern.
-        extension: Filter blobs by file extension.
+        project_id (str): The project ID or path.
+        search_term (str): The term to search for.
+        scope (str): The scope to search in (issues, merge_requests, etc).
+        ref (str, optional): Branch or tag to search in (for blobs/commits).
+        filename (str, optional): Filter blobs by filename pattern.
+        path (str, optional): Filter blobs by path pattern.
+        extension (str, optional): Filter blobs by file extension.
 
     Returns:
-        dict[str, Any]: The search results.
+        dict: The search results, including:
+            - project_id (str): The project ID or path.
+            - scope (str): The search scope.
+            - search_term (str): The search term.
+            - ref (str | None): The reference used for the search.
+            - filters (dict | None): The filters used (filename, path, extension).
+            - results (list[dict]): The sanitized search results.
+            - count (int): The number of results.
 
     Raises:
         SearchError: If the scope is invalid.
@@ -335,16 +346,21 @@ def _search_group_by_type(
     return [result.dict() for result in results]
 
 
-def search_group_tool(group_id: str, search_term: str, scope: str) -> dict[str, Any]:
+def search_group_tool(group_id: str, search_term: str, scope: str) -> dict:
     """Search within a specific group.
 
     Args:
-        group_id: The group ID or path.
-        search_term: The term to search for.
-        scope: The scope to search in (projects, issues, etc).
+        group_id (str): The group ID or path.
+        search_term (str): The term to search for.
+        scope (str): The scope to search in (projects, issues, etc).
 
     Returns:
-        dict[str, Any]: The search results.
+        dict: The search results, including:
+            - group_id (str): The group ID or path.
+            - scope (str): The search scope.
+            - search_term (str): The search term.
+            - results (list[dict]): The sanitized search results.
+            - count (int): The number of results.
 
     Raises:
         SearchError: If the scope is invalid.

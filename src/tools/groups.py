@@ -1,9 +1,8 @@
 """Tool functions for working with GitLab groups."""
 
 import asyncio
-from typing import Any
 
-from src.api.exceptions import GitLabAPIError
+from src.api.custom_exceptions import GitLabAPIError
 from src.schemas.groups import (
     GetGroupByProjectNamespaceInput,
     GetGroupInput,
@@ -17,26 +16,26 @@ from src.services.groups import (
 )
 
 
-def get_group_tool(group_id: str) -> dict[str, Any]:
+class InvalidAccessLevelError(ValueError):
+    def __init__(self) -> None:
+        super().__init__("Invalid access level")
+
+
+def get_group_tool(group_id: str) -> dict:
     """Get details about a specific GitLab group.
 
     Args:
         group_id: The ID or path of the group to retrieve.
 
     Returns:
-        dict[str, Any]: The group details.
+        dict: The group details.
 
     Raises:
         ValueError: If the GitLab API returns an error.
     """
     try:
-        # Create input model
         input_model = GetGroupInput(group_id=group_id)
-
-        # Call service function
         response = asyncio.run(get_group(input_model))
-
-        # Convert to dict
         return response.model_dump()
     except GitLabAPIError as exc:
         raise ValueError(str(exc)) from exc
@@ -49,7 +48,7 @@ def list_groups_tool(
     top_level_only: bool = False,
     page: int = 1,
     per_page: int = 20,
-) -> list[dict[str, Any]]:
+) -> list[dict]:
     """List GitLab groups with optional filtering.
 
     Args:
@@ -62,23 +61,18 @@ def list_groups_tool(
         per_page: The number of items per page.
 
     Returns:
-        list[dict[str, Any]]: The list of groups matching the criteria.
+        list[dict]: The list of groups matching the criteria.
 
     Raises:
         ValueError: If the GitLab API returns an error.
     """
     try:
-        # Convert string access level to enum if provided
         access_level = None
         if min_access_level:
             try:
                 access_level = GroupAccessLevel[min_access_level.upper()]
             except KeyError as key_exc:
-                raise ValueError(
-                    f"Invalid access level: {min_access_level}"
-                ) from key_exc
-
-        # Create input model
+                raise InvalidAccessLevelError() from key_exc
         input_model = ListGroupsInput(
             search=search,
             owned=owned,
@@ -87,38 +81,29 @@ def list_groups_tool(
             page=page,
             per_page=per_page,
         )
-
-        # Call service function
         response = asyncio.run(list_groups(input_model))
-
-        # Convert to list of dicts
         return [group.model_dump() for group in response.items]
     except GitLabAPIError as exc:
         raise ValueError(str(exc)) from exc
 
 
-def get_group_by_project_namespace_tool(project_namespace: str) -> dict[str, Any]:
+def get_group_by_project_namespace_tool(project_namespace: str) -> dict:
     """Get details about a GitLab group based on a project namespace.
 
     Args:
         project_namespace: The namespace path of the project.
 
     Returns:
-        dict[str, Any]: The group details.
+        dict: The group details.
 
     Raises:
         ValueError: If the GitLab API returns an error.
     """
     try:
-        # Create input model
         input_model = GetGroupByProjectNamespaceInput(
             project_namespace=project_namespace
         )
-
-        # Call service function
         response = asyncio.run(get_group_by_project_namespace(input_model))
-
-        # Convert to dict
         return response.model_dump()
     except GitLabAPIError as exc:
         raise ValueError(str(exc)) from exc

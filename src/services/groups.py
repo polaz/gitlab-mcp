@@ -58,7 +58,9 @@ async def list_groups(input_model: ListGroupsInput) -> GitLabGroupListResponse:
     except GitLabAPIError:
         raise  # Re-raise GitLabAPIError as is
     except Exception as exc:
-        raise GitLabAPIError(GitLabErrorType.SERVER_ERROR, {"operation": "list_groups"}, code=500) from exc
+        raise GitLabAPIError(
+            GitLabErrorType.SERVER_ERROR, {"operation": "list_groups"}, code=500
+        ) from exc
 
 
 async def get_group(input_model: GetGroupInput) -> GitLabGroup:
@@ -85,16 +87,14 @@ async def get_group(input_model: GetGroupInput) -> GitLabGroup:
     except GitLabAPIError as exc:
         if "not found" in str(exc).lower():
             raise GitLabAPIError(
-                GitLabErrorType.NOT_FOUND,
-                {"group_id": input_model.group_id},
-                code=404
+                GitLabErrorType.NOT_FOUND, {"group_id": input_model.group_id}, code=404
             ) from exc
         raise  # Re-raise original GitLabAPIError for other API errors
     except Exception as exc:
         raise GitLabAPIError(
             GitLabErrorType.SERVER_ERROR,
             {"operation": "get_group", "group_id": input_model.group_id},
-            code=500
+            code=500,
         ) from exc
 
 
@@ -128,12 +128,15 @@ async def get_group_by_project_namespace(
             raise GitLabAPIError(
                 GitLabErrorType.NOT_FOUND,
                 {"namespace": input_model.project_namespace},
-                code=404
+                code=404,
             ) from exc
         raise  # Re-raise original GitLabAPIError for other API errors
     except Exception as exc:
         raise GitLabAPIError(
             GitLabErrorType.SERVER_ERROR,
-            {"operation": "get_group_by_namespace", "namespace": input_model.project_namespace},
-            code=500
+            {
+                "operation": "get_group_by_namespace",
+                "namespace": input_model.project_namespace,
+            },
+            code=500,
         ) from exc

@@ -1,7 +1,7 @@
 import asyncio
-from typing import Any, cast
+from typing import cast
 
-from src.api.exceptions import GitLabAPIError, GitLabBranchError
+from src.api.custom_exceptions import GitLabAPIError
 from src.schemas.branches import (
     AccessLevel,
     AccessLevelModel,
@@ -26,33 +26,29 @@ from src.services.branches import (
 )
 
 
-def create_branch_tool(project_path: str, branch_name: str, ref: str) -> dict[str, Any]:
+def create_branch_tool(project_path: str, branch_name: str, ref: str) -> dict:
     """Create a new branch in a GitLab repository.
 
     Args:
-        project_path: The path of the project (e.g., 'namespace/project').
-        branch_name: The name of the branch to create.
-        ref: The reference (branch, tag, or commit) to create the branch from.
+        project_path (str): The path of the project (e.g., "namespace/project").
+        branch_name (str): The name of the branch to create.
+        ref (str): The reference (branch, tag, or commit) to create the branch from.
 
     Returns:
-        dict[str, Any]: Details of the created branch.
+        dict: Details of the created branch.
 
     Raises:
         ValueError: If the GitLab API returns an error.
     """
     try:
-        # Create input model
         input_model = CreateBranchInput(
             project_path=project_path,
             branch_name=branch_name,
             ref=ref,
         )
-
         response = asyncio.run(create_branch(input_model))
-
-        # Convert to dict
         return response.model_dump()
-    except (GitLabAPIError, GitLabBranchError) as exc:
+    except GitLabAPIError as exc:
         raise ValueError(str(exc)) from exc
 
 
@@ -60,7 +56,7 @@ def get_default_branch_ref_tool(project_path: str) -> str:
     """Get the default branch reference for a GitLab repository.
 
     Args:
-        project_path: The path of the project (e.g., 'namespace/project').
+        project_path (str): The path of the project (e.g., "namespace/project").
 
     Returns:
         str: The default branch reference.
@@ -69,27 +65,25 @@ def get_default_branch_ref_tool(project_path: str) -> str:
         ValueError: If the GitLab API returns an error.
     """
     try:
-        # Create input model
         input_model = GetDefaultBranchRefInput(
             project_path=project_path,
         )
-
         return asyncio.run(get_default_branch_ref(input_model))
-    except (GitLabAPIError, GitLabBranchError) as exc:
+    except GitLabAPIError as exc:
         raise ValueError(str(exc)) from exc
 
 
 def list_branches_tool(
     project_path: str, search: str | None = None
-) -> list[dict[str, Any]]:
+) -> list[dict]:
     """List branches in a GitLab repository.
 
     Args:
-        project_path: The path of the project (e.g., 'namespace/project').
-        search: Optional search pattern for branch names.
+        project_path (str): The path of the project (e.g., "namespace/project").
+        search (str | None): Optional search pattern for branch names.
 
     Returns:
-        list[dict[str, Any]]: List of branches matching the criteria.
+        list[dict]: List of branches matching the criteria.
 
     Raises:
         ValueError: If the GitLab API returns an error.
@@ -99,24 +93,21 @@ def list_branches_tool(
             project_path=project_path,
             search=search,
         )
-
         response = asyncio.run(list_branches(input_model))
-
-        # Convert to list of dicts
         return [branch.model_dump() for branch in response.items]
-    except (GitLabAPIError, GitLabBranchError) as exc:
+    except GitLabAPIError as exc:
         raise ValueError(str(exc)) from exc
 
 
-def get_branch_tool(project_path: str, branch_name: str) -> dict[str, Any]:
+def get_branch_tool(project_path: str, branch_name: str) -> dict:
     """Get details for a specific branch in a GitLab repository.
 
     Args:
-        project_path: The path of the project (e.g., 'namespace/project').
-        branch_name: The name of the branch to retrieve.
+        project_path (str): The path of the project (e.g., "namespace/project").
+        branch_name (str): The name of the branch to retrieve.
 
     Returns:
-        dict[str, Any]: Details of the specified branch.
+        dict: Details of the specified branch.
 
     Raises:
         ValueError: If the GitLab API returns an error.
@@ -126,11 +117,9 @@ def get_branch_tool(project_path: str, branch_name: str) -> dict[str, Any]:
             project_path=project_path,
             branch_name=branch_name,
         )
-
         response = asyncio.run(get_branch(input_model))
-
         return response.model_dump()
-    except (GitLabAPIError, GitLabBranchError) as exc:
+    except GitLabAPIError as exc:
         raise ValueError(str(exc)) from exc
 
 
@@ -138,8 +127,8 @@ def delete_branch_tool(project_path: str, branch_name: str) -> None:
     """Delete a branch from a GitLab repository.
 
     Args:
-        project_path: The path of the project (e.g., 'namespace/project').
-        branch_name: The name of the branch to delete.
+        project_path (str): The path of the project (e.g., "namespace/project").
+        branch_name (str): The name of the branch to delete.
 
     Raises:
         ValueError: If the GitLab API returns an error.
@@ -149,9 +138,8 @@ def delete_branch_tool(project_path: str, branch_name: str) -> None:
             project_path=project_path,
             branch_name=branch_name,
         )
-
         asyncio.run(delete_branch(input_model))
-    except (GitLabAPIError, GitLabBranchError) as exc:
+    except GitLabAPIError as exc:
         raise ValueError(str(exc)) from exc
 
 
@@ -159,7 +147,7 @@ def delete_merged_branches_tool(project_path: str) -> None:
     """Delete all merged branches from a GitLab repository.
 
     Args:
-        project_path: The path of the project (e.g., 'namespace/project').
+        project_path (str): The path of the project (e.g., "namespace/project").
 
     Raises:
         ValueError: If the GitLab API returns an error.
@@ -168,9 +156,8 @@ def delete_merged_branches_tool(project_path: str) -> None:
         input_model = DeleteMergedBranchesInput(
             project_path=project_path,
         )
-
         asyncio.run(delete_merged_branches(input_model))
-    except (GitLabAPIError, GitLabBranchError) as exc:
+    except GitLabAPIError as exc:
         raise ValueError(str(exc)) from exc
 
 
@@ -185,37 +172,29 @@ def protect_branch_tool(
     """Protect a branch in a GitLab repository.
 
     Args:
-        project_path: The path of the project (e.g., 'namespace/project').
-        branch_name: The name of the branch to protect.
-        allowed_to_push: List of access levels allowed to push to the branch.
-            Use values from AccessLevel enum.
-        allowed_to_merge: List of access levels allowed to merge to the branch.
-            Use values from AccessLevel enum.
-        allow_force_push: Whether to allow force push to the branch.
-        code_owner_approval_required: Whether code owner approval is required.
+        project_path (str): The path of the project (e.g., "namespace/project").
+        branch_name (str): The name of the branch to protect.
+        allowed_to_push (list[int] | None): List of access levels allowed to push to the branch. Use values from AccessLevel enum.
+        allowed_to_merge (list[int] | None): List of access levels allowed to merge to the branch. Use values from AccessLevel enum.
+        allow_force_push (bool): Whether to allow force push to the branch.
+        code_owner_approval_required (bool): Whether code owner approval is required.
 
     Raises:
         ValueError: If the GitLab API returns an error.
     """
     try:
-        # Default to maintainer access if not specified
         if allowed_to_push is None:
             allowed_to_push = [AccessLevel.MAINTAINER]
-
         if allowed_to_merge is None:
             allowed_to_merge = [AccessLevel.MAINTAINER]
-
-        # Convert integer access levels to AccessLevelModel objects
         push_levels = [
             AccessLevelModel(access_level=cast(AccessLevel, level))
             for level in allowed_to_push
         ]
-
         merge_levels = [
             AccessLevelModel(access_level=cast(AccessLevel, level))
             for level in allowed_to_merge
         ]
-
         input_model = ProtectBranchInput(
             project_path=project_path,
             branch_name=branch_name,
@@ -224,9 +203,8 @@ def protect_branch_tool(
             allow_force_push=allow_force_push,
             code_owner_approval_required=code_owner_approval_required,
         )
-
         asyncio.run(protect_branch(input_model))
-    except (GitLabAPIError, GitLabBranchError) as exc:
+    except GitLabAPIError as exc:
         raise ValueError(str(exc)) from exc
 
 
@@ -234,8 +212,8 @@ def unprotect_branch_tool(project_path: str, branch_name: str) -> None:
     """Unprotect a branch in a GitLab repository.
 
     Args:
-        project_path: The path of the project (e.g., 'namespace/project').
-        branch_name: The name of the branch to unprotect.
+        project_path (str): The path of the project (e.g., "namespace/project").
+        branch_name (str): The name of the branch to unprotect.
 
     Raises:
         ValueError: If the GitLab API returns an error.
@@ -245,7 +223,6 @@ def unprotect_branch_tool(project_path: str, branch_name: str) -> None:
             project_path=project_path,
             branch_name=branch_name,
         )
-
         asyncio.run(unprotect_branch(input_model))
-    except (GitLabAPIError, GitLabBranchError) as exc:
+    except GitLabAPIError as exc:
         raise ValueError(str(exc)) from exc

@@ -2,8 +2,9 @@
 
 from typing import Any
 
+from src.api.custom_exceptions import GitLabAPIError, GitLabErrorType
 from src.api.rest_client import gitlab_rest_client
-from src.schemas import (
+from src.schemas.jobs import (
     GitLabJob,
     GitLabJobListResponse,
     GitLabJobLogsResponse,
@@ -22,24 +23,51 @@ async def list_project_jobs(input_model: ListProjectJobsInput) -> GitLabJobListR
 
     Returns:
         A response containing the list of jobs.
+
+    Raises:
+        GitLabAPIError: If retrieving the jobs fails.
     """
-    project_path = gitlab_rest_client._encode_path_parameter(input_model.project_path)
+    try:
+        project_path = gitlab_rest_client._encode_path_parameter(
+            input_model.project_path
+        )
 
-    params: dict[str, Any] = {
-        "page": input_model.page,
-        "per_page": input_model.per_page,
-    }
+        params: dict[str, Any] = {
+            "page": input_model.page,
+            "per_page": input_model.per_page,
+        }
 
-    if input_model.scope:
-        params["scope[]"] = [scope.value for scope in input_model.scope]
+        if input_model.scope:
+            params["scope[]"] = [scope.value for scope in input_model.scope]
 
-    response = await gitlab_rest_client.get_async(
-        f"/projects/{project_path}/jobs", params=params
-    )
+        response = await gitlab_rest_client.get_async(
+            f"/projects/{project_path}/jobs", params=params
+        )
 
-    return GitLabJobListResponse(
-        items=[GitLabJob.model_validate(job) for job in response]
-    )
+        return GitLabJobListResponse(
+            items=[GitLabJob.model_validate(job) for job in response]
+        )
+    except GitLabAPIError as exc:
+        if "not found" in str(exc).lower():
+            raise GitLabAPIError(
+                GitLabErrorType.NOT_FOUND,
+                {"message": f"Project {input_model.project_path} not found"},
+            ) from exc
+        raise GitLabAPIError(
+            GitLabErrorType.REQUEST_FAILED,
+            {
+                "message": f"Failed to list jobs for project {input_model.project_path}",
+                "operation": "list_project_jobs",
+            },
+        ) from exc
+    except Exception as exc:
+        raise GitLabAPIError(
+            GitLabErrorType.SERVER_ERROR,
+            {
+                "message": "Internal error listing project jobs",
+                "operation": "list_project_jobs",
+            },
+        ) from exc
 
 
 async def list_pipeline_jobs(

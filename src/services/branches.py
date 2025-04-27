@@ -47,16 +47,22 @@ async def create_branch(input_model: CreateBranchInput) -> GitLabReference:
         if "already exists" in str(exc).lower():
             raise GitLabAPIError(
                 GitLabErrorType.INVALID_REQUEST,
-                {"message": f"Branch {input_model.branch_name} already exists"}
+                {"message": f"Branch {input_model.branch_name} already exists"},
             ) from exc
         raise GitLabAPIError(
             GitLabErrorType.REQUEST_FAILED,
-            {"message": f"Failed to create branch {input_model.branch_name}", "operation": "create_branch"}
+            {
+                "message": f"Failed to create branch {input_model.branch_name}",
+                "operation": "create_branch",
+            },
         ) from exc
     except Exception as exc:
         raise GitLabAPIError(
             GitLabErrorType.SERVER_ERROR,
-            {"message": "Internal error during branch creation", "operation": "create_branch"}
+            {
+                "message": "Internal error during branch creation",
+                "operation": "create_branch",
+            },
         ) from exc
 
 
@@ -83,12 +89,18 @@ async def get_default_branch_ref(input_model: GetDefaultBranchRefInput) -> str:
     except GitLabAPIError as exc:
         raise GitLabAPIError(
             GitLabErrorType.REQUEST_FAILED,
-            {"message": "Failed to get default branch", "operation": "get_default_branch"}
+            {
+                "message": "Failed to get default branch",
+                "operation": "get_default_branch",
+            },
         ) from exc
     except Exception as exc:
         raise GitLabAPIError(
             GitLabErrorType.SERVER_ERROR,
-            {"message": "Internal error getting default branch", "operation": "get_default_branch"}
+            {
+                "message": "Internal error getting default branch",
+                "operation": "get_default_branch",
+            },
         ) from exc
 
 
@@ -121,12 +133,15 @@ async def list_branches(input_model: ListBranchesInput) -> GitLabBranchList:
     except GitLabAPIError as exc:
         raise GitLabAPIError(
             GitLabErrorType.REQUEST_FAILED,
-            {"message": "Failed to list branches", "operation": "list_branches"}
+            {"message": "Failed to list branches", "operation": "list_branches"},
         ) from exc
     except Exception as exc:
         raise GitLabAPIError(
             GitLabErrorType.SERVER_ERROR,
-            {"message": "Internal error listing branches", "operation": "list_branches"}
+            {
+                "message": "Internal error listing branches",
+                "operation": "list_branches",
+            },
         ) from exc
 
 
@@ -156,16 +171,19 @@ async def get_branch(input_model: GetBranchInput) -> GitLabReference:
         if "not found" in str(exc).lower():
             raise GitLabAPIError(
                 GitLabErrorType.NOT_FOUND,
-                {"message": f"Branch {input_model.branch_name} not found"}
+                {"message": f"Branch {input_model.branch_name} not found"},
             ) from exc
         raise GitLabAPIError(
             GitLabErrorType.REQUEST_FAILED,
-            {"message": f"Failed to get branch {input_model.branch_name}", "operation": "get_branch"}
+            {
+                "message": f"Failed to get branch {input_model.branch_name}",
+                "operation": "get_branch",
+            },
         ) from exc
     except Exception as exc:
         raise GitLabAPIError(
             GitLabErrorType.SERVER_ERROR,
-            {"message": "Internal error getting branch", "operation": "get_branch"}
+            {"message": "Internal error getting branch", "operation": "get_branch"},
         ) from exc
 
 
@@ -190,16 +208,19 @@ async def delete_branch(input_model: DeleteBranchInput) -> None:
         if "not found" in str(exc).lower():
             raise GitLabAPIError(
                 GitLabErrorType.NOT_FOUND,
-                {"message": f"Branch {input_model.branch_name} not found"}
+                {"message": f"Branch {input_model.branch_name} not found"},
             ) from exc
         raise GitLabAPIError(
             GitLabErrorType.REQUEST_FAILED,
-            {"message": f"Failed to delete branch {input_model.branch_name}", "operation": "delete_branch"}
+            {
+                "message": f"Failed to delete branch {input_model.branch_name}",
+                "operation": "delete_branch",
+            },
         ) from exc
     except Exception as exc:
         raise GitLabAPIError(
             GitLabErrorType.SERVER_ERROR,
-            {"message": "Internal error deleting branch", "operation": "delete_branch"}
+            {"message": "Internal error deleting branch", "operation": "delete_branch"},
         ) from exc
 
 
@@ -222,12 +243,18 @@ async def delete_merged_branches(input_model: DeleteMergedBranchesInput) -> None
     except GitLabAPIError as exc:
         raise GitLabAPIError(
             GitLabErrorType.REQUEST_FAILED,
-            {"message": "Failed to delete merged branches", "operation": "delete_merged_branches"}
+            {
+                "message": "Failed to delete merged branches",
+                "operation": "delete_merged_branches",
+            },
         ) from exc
     except Exception as exc:
         raise GitLabAPIError(
             GitLabErrorType.SERVER_ERROR,
-            {"message": "Internal error deleting merged branches", "operation": "delete_merged_branches"}
+            {
+                "message": "Internal error deleting merged branches",
+                "operation": "delete_merged_branches",
+            },
         ) from exc
 
 
@@ -269,12 +296,18 @@ async def protect_branch(input_model: ProtectBranchInput) -> None:
     except GitLabAPIError as exc:
         raise GitLabAPIError(
             GitLabErrorType.REQUEST_FAILED,
-            {"message": f"Failed to protect branch {input_model.branch_name}", "operation": "protect_branch"}
+            {
+                "message": f"Failed to protect branch {input_model.branch_name}",
+                "operation": "protect_branch",
+            },
         ) from exc
     except Exception as exc:
         raise GitLabAPIError(
             GitLabErrorType.SERVER_ERROR,
-            {"message": "Internal error protecting branch", "operation": "protect_branch"}
+            {
+                "message": "Internal error protecting branch",
+                "operation": "protect_branch",
+            },
         ) from exc
 
 
@@ -299,14 +332,20 @@ async def unprotect_branch(input_model: UnprotectBranchInput) -> None:
         if "not found" in str(exc).lower():
             raise GitLabAPIError(
                 GitLabErrorType.NOT_FOUND,
-                {"message": f"Protected branch {input_model.branch_name} not found"}
+                {"message": f"Protected branch {input_model.branch_name} not found"},
             ) from exc
         raise GitLabAPIError(
             GitLabErrorType.REQUEST_FAILED,
-            {"message": f"Failed to unprotect branch {input_model.branch_name}", "operation": "unprotect_branch"}
+            {
+                "message": f"Failed to unprotect branch {input_model.branch_name}",
+                "operation": "unprotect_branch",
+            },
         ) from exc
     except Exception as exc:
         raise GitLabAPIError(
             GitLabErrorType.SERVER_ERROR,
-            {"message": "Internal error unprotecting branch", "operation": "unprotect_branch"}
+            {
+                "message": "Internal error unprotecting branch",
+                "operation": "unprotect_branch",
+            },
         ) from exc
