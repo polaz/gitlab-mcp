@@ -169,12 +169,54 @@ class CreateMergeRequestCommentInput(BaseModel):
 
 
 class CreateMergeRequestThreadInput(BaseModel):
-    """Input model for creating a thread on a GitLab merge request."""
+    """Input model for creating a thread (suggestion) on a GitLab merge request.
+
+    Attributes:
+        project_path: The path of the project (e.g., 'namespace/project').
+        mr_iid: The internal ID of the merge request.
+        body: The content of the thread (should include suggestion block for suggestions).
+        position_type: The type of position (usually 'text').
+        base_sha: The base commit SHA.
+        start_sha: The start commit SHA.
+        head_sha: The head commit SHA.
+        old_path: The old file path (for changes, required).
+        new_path: The new file path (for changes, required).
+        old_line: The line number in the old file (optional).
+        new_line: The line number in the new file (optional).
+    """
 
     project_path: str
     mr_iid: int
     body: str
-    position: dict[str, Any]
+    position_type: str
+    base_sha: str
+    start_sha: str
+    head_sha: str
+    old_path: str
+    new_path: str
+    old_line: int | None = None
+    new_line: int | None = None
+
+    @classmethod
+    def validate_line(cls, values):
+        if values.get("old_line") is None and values.get("new_line") is None:
+            raise ValueError("At least one of old_line or new_line must be provided.")
+        return values
+
+    def to_position(self) -> dict[str, Any]:
+        position = {
+            "position_type": self.position_type,
+            "base_sha": self.base_sha,
+            "start_sha": self.start_sha,
+            "head_sha": self.head_sha,
+            "old_path": self.old_path,
+            "new_path": self.new_path,
+        }
+        if self.old_line is not None:
+            position["old_line"] = str(self.old_line)
+        if self.new_line is not None:
+            position["new_line"] = str(self.new_line)
+        return position
 
 
 class ApplySuggestionInput(BaseModel):

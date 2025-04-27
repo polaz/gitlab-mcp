@@ -109,7 +109,7 @@ wheels = [
 ]
 
 [[package]]
-name = "gitlab-mcp"
+name = "gitlab-mcp-server"
 version = "0.2.0"
 source = { editable = "." }
 dependencies = [
@@ -128,9 +128,7 @@ dev = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
 ]
-
-[package.dev-dependencies]
-dev = [
+ruff = [
     { name = "ruff" },
 ]
 
@@ -146,11 +144,9 @@ requires-dist = [
     { name = "pydantic-settings", specifier = ">=2.8.1" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23.5" },
+    { name = "ruff", marker = "extra == 'ruff'", specifier = ">=0.11.5" },
 ]
-provides-extras = ["dev"]
-
-[package.metadata.requires-dev]
-dev = [{ name = "ruff", specifier = ">=0.11.5" }]
+provides-extras = ["dev", "ruff"]
 
 [[package]]
 name = "h11"
