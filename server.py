@@ -1,5 +1,15 @@
 from mcp.server.fastmcp import FastMCP
 
+from src.services.issues import (
+    close_issue,
+    comment_on_issue,
+    create_issue,
+    delete_issue,
+    get_issue,
+    list_all_issues,
+    list_issue_comments,
+    move_issue,
+)
 from src.tools.branches import (
     create_branch_tool,
     delete_branch_tool,
@@ -23,40 +33,30 @@ from src.tools.groups import (
     get_group_tool,
     list_groups_tool,
 )
-from src.tools.issues import (
-    close_issue_tool,
-    comment_on_issue_tool,
-    create_issue_link_tool,
-    create_issue_tool,
-    delete_issue_link_tool,
-    delete_issue_tool,
-    get_issue_link_tool,
-    get_issue_tool,
-    list_all_issues_tool,
-    list_group_issues_tool,
-    list_issue_comments_tool,
-    list_issue_links_tool,
-    list_issues_tool,
-    move_issue_tool,
-    update_issue_tool,
-)
 from src.tools.jobs import (
     get_job_failure_info_tool,
     get_job_logs_tool,
     get_job_tool,
 )
 from src.tools.merge_requests import (
+    apply_multiple_suggestions_tool,
+    apply_suggestion_tool,
+    create_merge_request_comment_tool,
+    create_merge_request_thread_tool,
     create_merge_request_tool,
+    delete_merge_request_tool,
     get_merge_request_tool,
     list_merge_requests_tool,
     merge_merge_request_tool,
+    merge_request_changes_tool,
+    update_merge_request_tool,
 )
 from src.tools.pipelines import (
     get_latest_pipeline_tool,
     get_single_pipeline_tool,
     list_project_pipelines_tool,
 )
-from src.tools.repositories import create_repository_tool
+from src.tools.repositories import create_repository_tool, list_repository_tree_tool
 from src.tools.search import (
     search_global_tool,
     search_group_tool,
@@ -64,13 +64,17 @@ from src.tools.search import (
 )
 
 # Create the MCP server
-mcp = FastMCP("Gitlab", instructions="This server exposes GitLab operations as MCP tools. Use the tool names and descriptions to interact with GitLab resources.")
+mcp = FastMCP("Gitlab", "0.1.0", description="GitLab API tools")
 
 # Register repository tools
 
 mcp.tool(name="create_repository", description="Create a new GitLab repository.")(
     create_repository_tool
 )
+mcp.tool(
+    name="list_repository_tree",
+    description="List files and directories in a GitLab repository.",
+)(list_repository_tree_tool)
 
 
 # Register branch tools
@@ -135,49 +139,28 @@ mcp.tool(
 
 # Register issue tools
 mcp.tool(name="create_issue", description="Create a new issue in a GitLab repository.")(
-    create_issue_tool
+    create_issue
 )
-mcp.tool(
-    name="update_issue", description="Update an existing issue in a GitLab repository."
-)(update_issue_tool)
-mcp.tool(name="list_issues", description="List issues for a GitLab project.")(
-    list_issues_tool
-)
+
 mcp.tool(
     name="list_all_issues",
     description="List all issues the authenticated user has access to.",
-)(list_all_issues_tool)
-mcp.tool(name="list_group_issues", description="List issues in a GitLab group.")(
-    list_group_issues_tool
-)
+)(list_all_issues)
+
 mcp.tool(name="get_issue", description="Get details for a specific GitLab issue.")(
-    get_issue_tool
+    get_issue
 )
-mcp.tool(name="close_issue", description="Close a GitLab issue.")(close_issue_tool)
+mcp.tool(name="close_issue", description="Close a GitLab issue.")(close_issue)
 mcp.tool(name="delete_issue", description="Delete an issue from a GitLab repository.")(
-    delete_issue_tool
+    delete_issue
 )
 mcp.tool(name="move_issue", description="Move an issue to a different project.")(
-    move_issue_tool
+    move_issue
 )
 mcp.tool(name="comment_on_issue", description="Add a comment to a GitLab issue.")(
-    comment_on_issue_tool
+    comment_on_issue
 )
-mcp.tool(name="list_issue_comments", description="List comments for a GitLab issue.")(
-    list_issue_comments_tool
-)
-mcp.tool(name="create_issue_link", description="Create a link between issues.")(
-    create_issue_link_tool
-)
-mcp.tool(name="list_issue_links", description="List links to an issue.")(
-    list_issue_links_tool
-)
-mcp.tool(name="get_issue_link", description="Get details about an issue link.")(
-    get_issue_link_tool
-)
-mcp.tool(name="delete_issue_link", description="Delete a link between issues.")(
-    delete_issue_link_tool
-)
+
 
 # Register merge request tools
 mcp.tool(
@@ -194,6 +177,32 @@ mcp.tool(
 mcp.tool(name="merge_merge_request", description="Merge a GitLab merge request.")(
     merge_merge_request_tool
 )
+mcp.tool(
+    name="update_merge_request",
+    description="Update an existing merge request in GitLab.",
+)(update_merge_request_tool)
+mcp.tool(
+    name="delete_merge_request",
+    description="Delete a merge request from a GitLab repository.",
+)(delete_merge_request_tool)
+mcp.tool(
+    name="merge_request_changes", description="Get the changes for a merge request."
+)(merge_request_changes_tool)
+mcp.tool(
+    name="create_merge_request_comment", description="Add a comment to a merge request."
+)(create_merge_request_comment_tool)
+mcp.tool(
+    name="create_merge_request_thread",
+    description="Create a new thread on a merge request.",
+)(create_merge_request_thread_tool)
+mcp.tool(
+    name="apply_suggestion",
+    description="Apply a suggestion in a merge request comment.",
+)(apply_suggestion_tool)
+mcp.tool(
+    name="apply_multiple_suggestions",
+    description="Apply multiple suggestions in a merge request.",
+)(apply_multiple_suggestions_tool)
 
 # Register pipeline tools
 mcp.tool(
@@ -247,4 +256,4 @@ mcp.tool(
 
 # Run the server
 if __name__ == "__main__":
-    mcp.run(transport="stdio")
+    mcp.run()

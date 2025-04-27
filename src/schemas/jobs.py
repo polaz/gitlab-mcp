@@ -154,16 +154,6 @@ class GetJobLogsInput(BaseModel):
     job_id: int
 
 
-class GitLabTagList(BaseModel):
-    """Model for job tag list.
-
-    Attributes:
-        tags: List of tags associated with the job.
-    """
-
-    __root__: list[str]
-
-
 class GitLabCommit(BaseModel):
     """Model for commit information in a GitLab job.
 

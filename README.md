@@ -99,7 +99,7 @@ gitlab-mcp/
 │   │   ├── merge_requests.py      # Merge request data models
 │   │   ├── pipelines.py           # Pipeline data models
 │   │   ├── groups.py              # Group data models
-│   │   └── users.py               # User data models
+│   │   └── search.py              # search data models
 │   ├── services/                  # Business logic layer
 │   │   ├── repositories.py        # Repository operations
 │   │   ├── branches.py            # Branch operations
@@ -107,7 +107,7 @@ gitlab-mcp/
 │   │   ├── merge_requests.py      # Merge request operations
 │   │   ├── pipelines.py           # Pipeline operations
 │   │   ├── groups.py              # Group operations
-│   │   └── users.py               # User operations
+│   │   └── search.py              # search operations
 │   └── tools/                     # MCP tool implementations
 │       ├── repositories.py        # Repository tools
 │       ├── branches.py            # Branch tools
@@ -115,7 +115,7 @@ gitlab-mcp/
 │       ├── merge_requests.py      # Merge request tools
 │       ├── pipelines.py           # Pipeline tools
 │       ├── groups.py              # Group tools
-│       └── users.py               # User tools
+│       └── search.py              # search tools
 ├── server.py                      # Main MCP server entry point
 ```
 
@@ -133,58 +133,77 @@ The server provides the following tools for interacting with GitLab:
 
 ### Repository Management
 
-- `fork_repository`: Fork a GitLab repository
 - `create_repository`: Create a new GitLab repository
-- `search_projects`: Search for GitLab projects by name or keyword
+- `list_repository_tree`: List the contents of a repository tree
 
 ### Branch Operations
 
 - `create_branch`: Create a new branch in a GitLab repository
+- `list_branches`: List branches in a GitLab repository
+- `get_branch`: Get details for a specific GitLab branch
+- `delete_branch`: Delete a branch from a GitLab repository
+- `delete_merged_branches`: Delete all merged branches from a GitLab repository
+- `protect_branch`: Protect a branch in a GitLab repository
+- `unprotect_branch`: Remove protection from a branch in a GitLab repository
 - `get_default_branch_ref`: Get the default branch reference for a GitLab repository
 
 ### File Operations
 
+- `create_file`: Create a new file in a GitLab repository
 - `get_file_contents`: Retrieve the contents of a file from a GitLab repository
+- `get_raw_file_contents`: Retrieve the raw contents of a file from a GitLab repository
+- `update_file`: Update an existing file in a GitLab repository
+- `delete_file`: Delete a file from a GitLab repository
+- `get_file_blame`: Retrieve blame information for a file in a GitLab repository
 
 ### Issue Management
 
 - `create_issue`: Create a new issue in a GitLab repository
+- `update_issue`: Update an existing issue in a GitLab repository
 - `list_issues`: List issues for a GitLab project
+- `list_all_issues`: List all issues the authenticated user has access to
+- `list_group_issues`: List issues in a GitLab group
 - `get_issue`: Get details for a specific GitLab issue
+- `close_issue`: Close a GitLab issue
+- `delete_issue`: Delete an issue from a GitLab repository
+- `move_issue`: Move an issue to a different project
 - `comment_on_issue`: Add a comment to a GitLab issue
 - `list_issue_comments`: List comments for a GitLab issue
-- `close_issue`: Close a GitLab issue
+- `create_issue_link`: Create a link between issues
+- `list_issue_links`: List links to an issue
+- `get_issue_link`: Get details about an issue link
+- `delete_issue_link`: Delete a link between issues
 
 ### Merge Request Operations
 
 - `create_merge_request`: Create a new merge request in a GitLab repository
 - `list_merge_requests`: List merge requests for a GitLab project
 - `get_merge_request`: Get details for a specific GitLab merge request
-- `comment_on_merge_request`: Add a comment to a GitLab merge request
-- `list_merge_request_comments`: List comments for a GitLab merge request
-- `list_merge_request_changes`: List files changed in a GitLab merge request
-- `get_merge_request_diff`: Get the diff for a specific file in a GitLab merge request
-- `suggest_code_in_merge_request`: Create a code suggestion comment on a GitLab merge request
-- `approve_merge_request`: Approve a GitLab merge request
 - `merge_merge_request`: Merge a GitLab merge request
-- `close_merge_request`: Close a GitLab merge request
 
-### Pipeline Management (New)
+### Pipeline Management
 
-- `list_pipelines`: List pipelines in a GitLab project
-- `get_pipeline`: Get a specific pipeline from a GitLab project
-- `create_pipeline`: Create a new pipeline in a GitLab project
-- `pipeline_action`: Perform an action on a GitLab pipeline (cancel or retry)
+- `list_project_pipelines`: List pipelines in a GitLab project
+- `get_single_pipeline`: Get a single pipeline by ID for a GitLab project
+- `get_latest_pipeline`: Get the latest pipeline for the most recent commit on a specific ref
 
-### Group Operations (New - Read-only)
+### Job Operations
+
+- `get_job`: Get a specific job from a GitLab project
+- `get_job_logs`: Get logs from a GitLab job
+- `get_job_failure_info`: Get detailed information about why a GitLab job failed, including error messages from logs
+
+### Group Operations
 
 - `list_groups`: List GitLab groups
 - `get_group`: Get a specific GitLab group
+- `get_group_by_project_namespace`: Get a GitLab group based on a project namespace
 
-### User Operations (New - Read-only)
+### Search Tools
 
-- `list_users`: List GitLab users
-- `get_user`: Get a specific GitLab user
+- `search_global`: Search across all GitLab resources (projects, issues, merge requests, milestones, users, etc.)
+- `search_project`: Search within a specific project (issues, merge requests, code content, wiki content, etc.)
+- `search_group`: Search within a specific group (projects, issues, merge requests, milestones, etc.)
 
 ## Troubleshooting
 
