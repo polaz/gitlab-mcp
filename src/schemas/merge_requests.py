@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from .base import BaseModel, BaseResponseList
+from src.schemas.base import BaseModel, BaseResponseList
 
 
 class MergeStatus(str, Enum):

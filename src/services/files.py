@@ -2,16 +2,16 @@
 
 import base64
 
-from src.api.exceptions import (
+from src.api import (
     FileBlameError,
     FileContentError,
     FileCreateError,
     FileDeleteError,
     FileUpdateError,
     GitLabAPIError,
+    gitlab_rest_client,
 )
-from src.api.rest_client import gitlab_rest_client
-from src.schemas.files import (
+from src.schemas import (
     CreateFileInput,
     DeleteFileInput,
     FileBlameRange,

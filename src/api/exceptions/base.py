@@ -1,4 +1,3 @@
-# filepath: c:\Users\aditp\Desktop\python\gitlab-mcp-main\src\api\exceptions\base.py
 """Base exception classes for GitLab API errors."""
 
 

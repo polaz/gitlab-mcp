@@ -3,8 +3,8 @@
 from dataclasses import dataclass
 from typing import Any, cast
 
-from ..api.rest_client import gitlab_rest_client
-from ..schemas.merge_requests import (
+from src.api.rest_client import gitlab_rest_client
+from src.schemas.merge_requests import (
     AcceptedMergeRequest,
     CreateMergeRequestInput,
     GitLabComment,

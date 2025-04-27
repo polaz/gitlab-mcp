@@ -1,43 +1,34 @@
 from mcp.server.fastmcp import FastMCP
 
 from src.tools import (
-    # Issue tools
-    # Branch tools
     close_issue_tool,
     comment_on_issue_tool,
     create_branch_tool,
-    # File tools
     create_file_tool,
     create_issue_link_tool,
     create_issue_tool,
     create_merge_request_tool,
-    # Pipeline tools
-    create_pipeline_tool,
-    # Repository tools
     create_repository_tool,
     delete_branch_tool,
     delete_file_tool,
     delete_issue_link_tool,
     delete_issue_tool,
     delete_merged_branches_tool,
-    fork_repository_tool,
     get_branch_tool,
     get_default_branch_ref_tool,
     get_file_blame_tool,
     get_file_contents_tool,
-    # Group tools
     get_group_by_project_namespace_tool,
     get_group_tool,
     get_issue_link_tool,
     get_issue_tool,
-    # Job tools
     get_job_failure_info_tool,
     get_job_logs_tool,
     get_job_tool,
+    get_latest_pipeline_tool,
     get_merge_request_tool,
-    get_pipeline_tool,
     get_raw_file_contents_tool,
-    # User tools
+    get_single_pipeline_tool,
     get_user_tool,
     list_all_issues_tool,
     list_branches_tool,
@@ -47,16 +38,14 @@ from src.tools import (
     list_issue_links_tool,
     list_issues_tool,
     list_merge_requests_tool,
-    list_pipeline_jobs_tool,
-    list_pipeline_trigger_jobs_tool,
-    list_pipelines_tool,
-    list_project_jobs_tool,
+    list_project_pipelines_tool,
     list_users_tool,
     merge_merge_request_tool,
     move_issue_tool,
-    pipeline_action_tool,
     protect_branch_tool,
-    search_projects_tool,
+    search_global_tool,
+    search_group_tool,
+    search_project_tool,
     unprotect_branch_tool,
     update_file_tool,
     update_issue_tool,
@@ -66,15 +55,11 @@ from src.tools import (
 mcp = FastMCP("Gitlab")
 
 # Register repository tools
-mcp.tool(name="fork_repository", description="Fork a GitLab repository.")(
-    fork_repository_tool
-)
+
 mcp.tool(name="create_repository", description="Create a new GitLab repository.")(
     create_repository_tool
 )
-mcp.tool(
-    name="search_projects", description="Search for GitLab projects by name or keyword."
-)(search_projects_tool)
+
 
 # Register branch tools
 mcp.tool(
@@ -198,33 +183,19 @@ mcp.tool(name="merge_merge_request", description="Merge a GitLab merge request."
 )
 
 # Register pipeline tools
-mcp.tool(name="list_pipelines", description="List pipelines in a GitLab project.")(
-    list_pipelines_tool
-)
 mcp.tool(
-    name="get_pipeline", description="Get a specific pipeline from a GitLab project."
-)(get_pipeline_tool)
+    name="list_project_pipelines", description="List pipelines in a GitLab project."
+)(list_project_pipelines_tool)
 mcp.tool(
-    name="create_pipeline", description="Create a new pipeline in a GitLab project."
-)(create_pipeline_tool)
+    name="get_single_pipeline",
+    description="Get a single pipeline by ID for a GitLab project.",
+)(get_single_pipeline_tool)
 mcp.tool(
-    name="pipeline_action",
-    description="Perform an action on a GitLab pipeline (cancel or retry).",
-)(pipeline_action_tool)
+    name="get_latest_pipeline",
+    description="Get the latest pipeline for the most recent commit on a specific ref.",
+)(get_latest_pipeline_tool)
 
 # Register job tools
-mcp.tool(
-    name="list_project_jobs",
-    description="List all jobs in a GitLab project.",
-)(list_project_jobs_tool)
-mcp.tool(
-    name="list_pipeline_jobs",
-    description="List jobs in a GitLab pipeline.",
-)(list_pipeline_jobs_tool)
-mcp.tool(
-    name="list_pipeline_trigger_jobs",
-    description="List trigger jobs (bridges) for a GitLab pipeline.",
-)(list_pipeline_trigger_jobs_tool)
 mcp.tool(
     name="get_job",
     description="Get a specific job from a GitLab project.",
@@ -249,6 +220,20 @@ mcp.tool(
 # Register user tools
 mcp.tool(name="list_users", description="List GitLab users.")(list_users_tool)
 mcp.tool(name="get_user", description="Get a specific GitLab user.")(get_user_tool)
+
+# Register search tools
+mcp.tool(
+    name="search_global",
+    description="Search across all GitLab resources. Supports searching for projects, issues, merge requests, milestones, users, and more.",
+)(search_global_tool)
+mcp.tool(
+    name="search_project",
+    description="Search within a specific project. Supports searching for issues, merge requests, code content, wiki content, and more.",
+)(search_project_tool)
+mcp.tool(
+    name="search_group",
+    description="Search within a specific group. Supports searching for projects, issues, merge requests, and milestones.",
+)(search_group_tool)
 
 # Run the server
 if __name__ == "__main__":

@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import Field
 
-from .base import BaseModel, BaseResponseList
+from src.schemas.base import BaseModel, BaseResponseList
 
 
 class JobStatus(str, Enum):

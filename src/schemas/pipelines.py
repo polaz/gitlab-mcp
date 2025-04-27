@@ -1,6 +1,6 @@
 from enum import Enum
 
-from .base import BaseModel, BaseResponseList
+from src.schemas.base import BaseModel, BaseResponseList
 
 
 class PipelineStatus(str, Enum):

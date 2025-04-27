@@ -1,11 +1,10 @@
-# filepath: c:\Users\aditp\Desktop\python\gitlab-mcp-main\src\schemas\commits.py
 """Pydantic schemas for GitLab commit data structures."""
 
 from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-from .base import GitLabResponseBase
+from src.schemas.base import GitLabResponseBase
 
 
 class GitLabCommitter(BaseModel):

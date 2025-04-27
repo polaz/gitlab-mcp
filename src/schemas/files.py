@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from .base import GitLabResponseBase
+from src.schemas.base import GitLabResponseBase
 
 
 class GetFileContentsInput(BaseModel):
