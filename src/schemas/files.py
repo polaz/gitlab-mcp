@@ -103,7 +103,6 @@ class DeleteFileInput(BaseModel):
     commit_message: str
 
 
-
 class FileOperationResponse(GitLabResponseBase):
     """Response model for file operations.
 

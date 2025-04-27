@@ -14,6 +14,7 @@ class JobLogsInput(BaseModel):
     project_path: str
     job_id: int
 
+
 class JobLogsResponse(BaseModel):
     """Response model for GitLab job logs.
 

@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import Any, ClassVar
 
 from src.schemas.base import BaseModel, BaseResponseList
 
@@ -15,9 +15,6 @@ class MergeStatus(str, Enum):
     CAN_BE_MERGED = "can_be_merged"
     CANNOT_BE_MERGED = "cannot_be_merged"
     CANNOT_BE_MERGED_RECHECK = "cannot_be_merged_recheck"
-
-
-
 
 
 class MergeRequestState(str, Enum):
@@ -36,6 +33,7 @@ class DiffRefs(BaseModel):
     base_sha: str
     head_sha: str
     start_sha: str
+
 
 class CreateMergeRequestInput(BaseModel):
     """Input model for creating a merge request in a GitLab repository."""
@@ -69,7 +67,7 @@ class GitLabMergeRequest(BaseModel):
     squash_commit_sha: str | None = None
     sha: str | None = None
     merge_after: str | None = None
-    labels: list[str] = []
+    labels: ClassVar[list[str]] = []
     diff_refs: DiffRefs | None = None
     draft: bool = False
 
@@ -198,7 +196,6 @@ class GitLabComment(BaseModel):
 
     id: int
     body: str
-
 
 
 class MergeRequestChanges(BaseModel):
