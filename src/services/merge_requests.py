@@ -1,7 +1,6 @@
 """Services for interacting with GitLab merge requests."""
 
 from dataclasses import dataclass
-from typing import Any, cast
 
 from src.api.custom_exceptions import GitLabAPIError, GitLabErrorType
 from src.api.rest_client import gitlab_rest_client
@@ -13,7 +12,7 @@ from src.schemas.merge_requests import (
     GitLabMergeRequest,
     ListMergeRequestsInput,
     MergeRequestChanges,
-    MergeRequestSuggestion,
+    UpdateMergeRequestInput,
 )
 
 
@@ -48,7 +47,7 @@ async def create_merge_request(
             input_model.project_path
         )
 
-        payload = input_model.model_dump(exclude={"project_path"})
+        payload = input_model.model_dump(exclude={"project_path"}, exclude_none=True)
 
         response = await gitlab_rest_client.post_async(
             f"/projects/{project_path}/merge_requests", json_data=payload
@@ -60,6 +59,7 @@ async def create_merge_request(
             GitLabErrorType.REQUEST_FAILED,
             {
                 "message": "Failed to create merge request",
+                "details": str(exc),
                 "operation": "create_merge_request",
             },
         ) from exc
@@ -195,14 +195,12 @@ async def get_merge_request(
 
 
 async def update_merge_request(
-    project_path: str, mr_iid: int, **kwargs: Any
+    input_model: UpdateMergeRequestInput,
 ) -> GitLabMergeRequest:
     """Update a merge request.
 
     Args:
-        project_path: The path of the project.
-        mr_iid: The internal ID of the merge request.
-        **kwargs: Fields to update.
+        input_model: The input model containing update fields.
 
     Returns:
         GitLabMergeRequest: The updated merge request details.
@@ -211,34 +209,35 @@ async def update_merge_request(
         GitLabAPIError: If updating the merge request fails.
     """
     try:
-        project_path_encoded = gitlab_rest_client._encode_path_parameter(project_path)
+        project_path_encoded = gitlab_rest_client._encode_path_parameter(
+            input_model.project_path
+        )
+        mr_iid = input_model.mr_iid
 
-        # Convert labels list to comma-separated string if present
-        if "labels" in kwargs and kwargs["labels"] is not None:
-            kwargs["labels"] = ",".join(kwargs["labels"])
-
-        # Handle add/remove labels lists
-        if "add_labels" in kwargs and kwargs["add_labels"] is not None:
-            kwargs["add_labels"] = ",".join(kwargs["add_labels"])
-        if "remove_labels" in kwargs and kwargs["remove_labels"] is not None:
-            kwargs["remove_labels"] = ",".join(kwargs["remove_labels"])
+        payload = input_model.model_dump(
+            exclude={"project_path", "mr_iid"},
+            exclude_none=True,
+        )
+        for key in ("labels", "add_labels", "remove_labels"):
+            if key in payload and payload[key] is not None:
+                payload[key] = ",".join(payload[key])
 
         response = await gitlab_rest_client.put_async(
             f"/projects/{project_path_encoded}/merge_requests/{mr_iid}",
-            json_data=kwargs,
+            json_data=payload,
         )
-
         return GitLabMergeRequest.model_validate(response)
     except GitLabAPIError as exc:
         if "not found" in str(exc).lower():
             raise GitLabAPIError(
                 GitLabErrorType.NOT_FOUND,
-                {"message": f"Merge request {mr_iid} not found"},
+                {"message": f"Merge request {input_model.mr_iid} not found"},
             ) from exc
         raise GitLabAPIError(
             GitLabErrorType.REQUEST_FAILED,
             {
-                "message": f"Failed to update merge request {mr_iid}",
+                "message": f"Failed to update merge request {input_model.mr_iid}",
+                "details": str(exc),
                 "operation": "update_merge_request",
             },
         ) from exc
@@ -453,158 +452,5 @@ async def create_merge_request_comment(
             {
                 "message": "Internal error creating merge request comment",
                 "operation": "create_merge_request_comment",
-            },
-        ) from exc
-
-
-async def create_merge_request_thread(
-    project_path: str, mr_iid: int, body: str, position: dict[str, Any]
-) -> dict[str, Any]:
-    """Create a thread on a merge request.
-
-    Args:
-        project_path: The path of the project.
-        mr_iid: The internal ID of the merge request.
-        body: The content of the thread.
-        position: The position in the diff where the thread should be placed.
-
-    Returns:
-        dict[str, Any]: The created thread.
-
-    Raises:
-        GitLabAPIError: If creating the thread fails.
-    """
-    try:
-        project_path_encoded = gitlab_rest_client._encode_path_parameter(project_path)
-
-        payload = {
-            "body": body,
-            "position": position,
-        }
-
-        response = await gitlab_rest_client.post_async(
-            f"/projects/{project_path_encoded}/merge_requests/{mr_iid}/discussions",
-            json_data=payload,
-        )
-
-        return cast(dict[str, Any], response)
-    except GitLabAPIError as exc:
-        if "not found" in str(exc).lower():
-            raise GitLabAPIError(
-                GitLabErrorType.NOT_FOUND,
-                {"message": f"Merge request {mr_iid} not found"},
-            ) from exc
-        raise GitLabAPIError(
-            GitLabErrorType.REQUEST_FAILED,
-            {
-                "message": f"Failed to create thread on merge request {mr_iid}",
-                "operation": "create_merge_request_thread",
-            },
-        ) from exc
-    except Exception as exc:
-        raise GitLabAPIError(
-            GitLabErrorType.SERVER_ERROR,
-            {
-                "message": "Internal error creating merge request thread",
-                "operation": "create_merge_request_thread",
-            },
-        ) from exc
-
-
-async def apply_suggestion(
-    suggestion_id: int, commit_message: str | None = None
-) -> MergeRequestSuggestion:
-    """Apply a suggestion to a merge request.
-
-    Args:
-        suggestion_id: The ID of the suggestion.
-        commit_message: The commit message for applying the suggestion.
-
-    Returns:
-        MergeRequestSuggestion: The suggestion details.
-
-    Raises:
-        GitLabAPIError: If applying the suggestion fails.
-    """
-    try:
-        payload: dict[str, Any] = {}
-        if commit_message:
-            payload["commit_message"] = commit_message
-
-        response = await gitlab_rest_client.put_async(
-            f"/suggestions/{suggestion_id}/apply",
-            json_data=payload,
-        )
-
-        return MergeRequestSuggestion.model_validate(response)
-    except GitLabAPIError as exc:
-        if "not found" in str(exc).lower():
-            raise GitLabAPIError(
-                GitLabErrorType.NOT_FOUND,
-                {"message": f"Suggestion {suggestion_id} not found"},
-            ) from exc
-        raise GitLabAPIError(
-            GitLabErrorType.REQUEST_FAILED,
-            {
-                "message": f"Failed to apply suggestion {suggestion_id}",
-                "operation": "apply_suggestion",
-            },
-        ) from exc
-    except Exception as exc:
-        raise GitLabAPIError(
-            GitLabErrorType.SERVER_ERROR,
-            {
-                "message": "Internal error applying suggestion",
-                "operation": "apply_suggestion",
-            },
-        ) from exc
-
-
-async def apply_multiple_suggestions(
-    ids: list[int], commit_message: str | None = None
-) -> list[MergeRequestSuggestion]:
-    """Apply multiple suggestions to a merge request.
-
-    Args:
-        ids: The IDs of the suggestions.
-        commit_message: The commit message for applying the suggestions.
-
-    Returns:
-        list[MergeRequestSuggestion]: The suggestions details.
-
-    Raises:
-        GitLabAPIError: If applying the suggestions fails.
-    """
-    try:
-        payload: dict[str, Any] = {"ids": ids}
-        if commit_message:
-            payload["commit_message"] = commit_message
-
-        response = await gitlab_rest_client.put_async(
-            "/suggestions/batch_apply",
-            json_data=payload,
-        )
-
-        return [MergeRequestSuggestion.model_validate(sugg) for sugg in response]
-    except GitLabAPIError as exc:
-        id_list = ", ".join(str(id_) for id_ in ids)
-        if "not found" in str(exc).lower():
-            raise GitLabAPIError(
-                GitLabErrorType.NOT_FOUND,
-                {"message": f"One or more suggestions not found: {id_list}"},
-            ) from exc
-        raise GitLabAPIError(
-            GitLabErrorType.REQUEST_FAILED,
-            {
-                "message": f"Failed to apply suggestions: {id_list}",
-                "operation": "apply_multiple_suggestions",
-            },
-        ) from exc
-    except Exception as exc:
-        raise GitLabAPIError(
-            GitLabErrorType.SERVER_ERROR,
-            {
-                "message": "Internal error applying multiple suggestions",
-                "operation": "apply_multiple_suggestions",
             },
         ) from exc

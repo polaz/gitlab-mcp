@@ -35,11 +35,8 @@ from src.services.jobs import (
     get_job_logs,
 )
 from src.services.merge_requests import (
-    apply_multiple_suggestions,
-    apply_suggestion,
     create_merge_request,
     create_merge_request_comment,
-    create_merge_request_thread,
     delete_merge_request,
     get_merge_request,
     list_merge_requests,
@@ -175,18 +172,6 @@ mcp.tool(
 mcp.tool(
     name="create_merge_request_comment", description="Add a comment to a merge request."
 )(create_merge_request_comment)
-mcp.tool(
-    name="create_merge_request_thread",
-    description="Create a new thread on a merge request.",
-)(create_merge_request_thread)
-mcp.tool(
-    name="apply_suggestion",
-    description="Apply a suggestion in a merge request comment.",
-)(apply_suggestion)
-mcp.tool(
-    name="apply_multiple_suggestions",
-    description="Apply multiple suggestions in a merge request.",
-)(apply_multiple_suggestions)
 
 # Register job tools
 
