@@ -82,7 +82,7 @@ class GetGroupInput(BaseModel):
         group_id: The ID or path of the group.
     """
 
-    group_id: str  # Can be either an ID (int) or a path (str)
+    group_id: str
 
 
 class CreateGroupInput(BaseModel):
@@ -116,7 +116,7 @@ class UpdateGroupInput(BaseModel):
         visibility: Optional new visibility level for the group.
     """
 
-    group_id: str  # Can be either an ID (int) or a path (str)
+    group_id: str
     name: str | None = None
     path: str | None = None
     description: str | None = None
@@ -130,7 +130,7 @@ class DeleteGroupInput(BaseModel):
         group_id: The ID or path of the group.
     """
 
-    group_id: str  # Can be either an ID (int) or a path (str)
+    group_id: str
 
 
 class GetGroupByProjectNamespaceInput(BaseModel):

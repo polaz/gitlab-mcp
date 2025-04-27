@@ -4,7 +4,7 @@ from enum import Enum
 
 from pydantic import BaseModel
 
-from src.schemas.base import GitLabResponseBase
+from src.schemas.base import GitLabResponseBase, PaginatedResponse
 
 
 class IssueType(str, Enum):
@@ -173,17 +173,11 @@ class ListIssuesInput(BaseModel):
     per_page: int = 20
 
 
-class GitLabIssueListResponse(BaseModel):
+class GitLabIssueListResponse(PaginatedResponse[GitLabIssue]):
     """Paginated response model for a list of GitLab issues.
 
     Attributes:
+        count: Total number of issues available.
         items: The list of issues returned.
-        page: The current page number.
-        per_page: The number of items per page.
-        total_count: The total number of issues available.
     """
-
-    items: list[GitLabIssue]
-    page: int
-    per_page: int
-    total_count: int
+    pass

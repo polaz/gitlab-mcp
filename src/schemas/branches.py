@@ -4,8 +4,8 @@ from enum import Enum
 
 from pydantic import BaseModel, Field, HttpUrl
 
-from .base import BaseResponseList, GitLabResponseBase
-from .commits import GitLabCommitDetail
+from src.schemas.base import BaseResponseList, GitLabResponseBase
+from src.schemas.commits import GitLabCommitDetail
 
 
 class AccessLevel(int, Enum):
