@@ -22,7 +22,7 @@ colorama==0.4.6
     # via click
 dotenv==0.9.9
     # via gitlab-mcp (pyproject.toml)
-h11==0.16.0
+h11==0.14.0
     # via
     #   httpcore
     #   uvicorn
