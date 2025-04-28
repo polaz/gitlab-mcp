@@ -55,7 +55,7 @@ You can also configure the MCP server in your MCP JSON configuration file:
   "mcpServers": {
     "gitlab-mcp": {
       "command": "uv",
-      "args": ["run", "--with", "mcp[cli],python-gitlab", "mcp", "run", "/path/to/gitlab-mcp/server.py"],
+      "args": ["run", "--with", "mcp[cli]", "mcp", "run", "/path/to/gitlab-mcp/server.py"],
       "env": {
         "GITLAB_PERSONAL_ACCESS_TOKEN": "your_personal_access_token",
         "GITLAB_API_URL": "https://gitlab.com"
@@ -70,16 +70,6 @@ You can also configure the MCP server in your MCP JSON configuration file:
 ```bash
 uv run mcp install server.py
 ```
-if you get errors swap:
-```bash
- "mcp[cli]"
-```
-to:
-
-```bash
- "mcp[cli],python-gitlab"
-```
-
 ## Project Structure
 
 The project follows a modular, domain-driven architecture:
