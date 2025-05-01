@@ -15,6 +15,11 @@ class SearchScope(str, Enum):
     PROJECTS = "projects"
     BLOBS = "blobs"
     WIKI_BLOBS = "wiki_blobs"
+    COMMITS = "commits"
+    ISSUES = "issues"
+    MERGE_REQUESTS = "merge_requests"
+    MILESTONES = "milestones"
+    NOTES = "notes"
 
 
 class BlobSearchFilters(BaseModel):
