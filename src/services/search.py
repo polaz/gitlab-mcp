@@ -43,7 +43,7 @@ async def search_globally(search_term: str, scope: SearchScope) -> list[Any]:
         response = await gitlab_rest_client.get_async(
             "/search",
             params={
-                "scope": search_request.scope,
+                "scope": search_request.scope.value,
                 "search": search_request.search,
             },
         )
@@ -79,7 +79,7 @@ async def search_group(
         response = await gitlab_rest_client.get_async(
             f"/groups/{search_request.group_id}/search",
             params={
-                "scope": search_request.scope,
+                "scope": search_request.scope.value,
                 "search": search_request.search,
             },
         )
@@ -114,7 +114,7 @@ async def search_project(input_model: ProjectSearchRequest) -> list[Any]:
 
     try:
         params = {
-            "scope": input_model.scope,
+            "scope": input_model.scope.value,
             "search": input_model.search,
         }
         if input_model.ref:
