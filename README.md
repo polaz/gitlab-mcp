@@ -78,16 +78,14 @@ The project follows a modular, domain-driven architecture:
 gitlab-mcp/
 ├── src/                           # Source code
 │   ├── api/                       # API interaction layer
-│   │   ├── client.py              # GitLab client wrapper
+│   │   ├── rest_client.py         # GitLab REST API client
 │   │   ├── exceptions.py          # API exception definitions
-│   │   └── async_utils.py         # Async support utilities
 │   ├── schemas/                   # Data models and validation
 │   │   ├── base.py                # Base schema classes
 │   │   ├── repositories.py        # Repository data models
 │   │   ├── branches.py            # Branch data models
 │   │   ├── issues.py              # Issue data models
 │   │   ├── merge_requests.py      # Merge request data models
-│   │   ├── pipelines.py           # Pipeline data models
 │   │   ├── groups.py              # Group data models
 │   │   └── search.py              # search data models
 │   ├── services/                  # Business logic layer
@@ -95,7 +93,6 @@ gitlab-mcp/
 │   │   ├── branches.py            # Branch operations
 │   │   ├── issues.py              # Issue operations
 │   │   ├── merge_requests.py      # Merge request operations
-│   │   ├── pipelines.py           # Pipeline operations
 │   │   ├── groups.py              # Group operations
 │   │   └── search.py              # search operations
 │   └── tools/                     # MCP tool implementations
@@ -103,7 +100,6 @@ gitlab-mcp/
 │       ├── branches.py            # Branch tools
 │       ├── issues.py              # Issue tools
 │       ├── merge_requests.py      # Merge request tools
-│       ├── pipelines.py           # Pipeline tools
 │       ├── groups.py              # Group tools
 │       └── search.py              # search tools
 ├── server.py                      # Main MCP server entry point
@@ -141,28 +137,19 @@ The server provides the following tools for interacting with GitLab:
 
 - `create_file`: Create a new file in a GitLab repository
 - `get_file_contents`: Retrieve the contents of a file from a GitLab repository
-- `get_raw_file_contents`: Retrieve the raw contents of a file from a GitLab repository
 - `update_file`: Update an existing file in a GitLab repository
 - `delete_file`: Delete a file from a GitLab repository
-- `get_file_blame`: Retrieve blame information for a file in a GitLab repository
 
 ### Issue Management
 
 - `create_issue`: Create a new issue in a GitLab repository
-- `update_issue`: Update an existing issue in a GitLab repository
-- `list_issues`: List issues for a GitLab project
 - `list_all_issues`: List all issues the authenticated user has access to
-- `list_group_issues`: List issues in a GitLab group
 - `get_issue`: Get details for a specific GitLab issue
 - `close_issue`: Close a GitLab issue
 - `delete_issue`: Delete an issue from a GitLab repository
 - `move_issue`: Move an issue to a different project
 - `comment_on_issue`: Add a comment to a GitLab issue
 - `list_issue_comments`: List comments for a GitLab issue
-- `create_issue_link`: Create a link between issues
-- `list_issue_links`: List links to an issue
-- `get_issue_link`: Get details about an issue link
-- `delete_issue_link`: Delete a link between issues
 
 ### Merge Request Operations
 
@@ -170,18 +157,14 @@ The server provides the following tools for interacting with GitLab:
 - `list_merge_requests`: List merge requests for a GitLab project
 - `get_merge_request`: Get details for a specific GitLab merge request
 - `merge_merge_request`: Merge a GitLab merge request
-
-### Pipeline Management
-
-- `list_project_pipelines`: List pipelines in a GitLab project
-- `get_single_pipeline`: Get a single pipeline by ID for a GitLab project
-- `get_latest_pipeline`: Get the latest pipeline for the most recent commit on a specific ref
+- `update_merge_request`: Update an existing merge request in a GitLab repository.
+- `delete_merge_request`: Delete a merge request from a GitLab repository.
+- `merge_request_changes`: Get the changes for a specific merge request.
+- `create_merge_request_comment`: Add a comment to a GitLab merge request.
 
 ### Job Operations
 
-- `get_job`: Get a specific job from a GitLab project
 - `get_job_logs`: Get logs from a GitLab job
-- `get_job_failure_info`: Get detailed information about why a GitLab job failed, including error messages from logs
 
 ### Group Operations
 
@@ -191,9 +174,9 @@ The server provides the following tools for interacting with GitLab:
 
 ### Search Tools
 
-- `search_global`: Search across all GitLab resources (projects, issues, merge requests, milestones, users, etc.)
-- `search_project`: Search within a specific project (issues, merge requests, code content, wiki content, etc.)
-- `search_group`: Search within a specific group (projects, issues, merge requests, milestones, etc.)
+- `search_globally`: Search across all GitLab resources (currently supports projects and files/blobs).
+- `search_project`: Search within a specific project (currently supports projects and files/blobs).
+- `search_group`: Search within a specific group (currently supports projects and files/blobs).
 
 ## Troubleshooting
 
