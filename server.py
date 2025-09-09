@@ -216,15 +216,15 @@ mcp.tool(
 # Register search tools
 mcp.tool(
     name="search_project",
-    description="Search within a specific project. Supports searching for projects, blobs, and wiki blobs.",
+    description="Search for file contents (blobs), wiki content, and project metadata within a specific GitLab project. IMPORTANT: Does NOT search issues, merge requests, or other GitLab objects. For project issues, use list_all_issues with the project_path parameter. Requires specific search terms (not wildcards like '*').",
 )(search_project)
 mcp.tool(
     name="search_globally",
-    description="Search across all GitLab resources (projects, blobs, and wiki blobs).",
+    description="Search for projects, file contents (blobs), and wiki content across all GitLab instances you have access to. IMPORTANT: Does NOT search issues, merge requests, or other GitLab objects. For issues, use list_all_issues without project_path for global search. Requires specific search terms (not wildcards like '*').",
 )(search_globally)
 mcp.tool(
     name="search_group",
-    description="Search within a specific group. Supports searching for projects, blobs, and wiki blobs.",
+    description="Search for projects, file contents (blobs), and wiki content within a specific GitLab group. IMPORTANT: Does NOT search issues, merge requests, or other GitLab objects. For issues, use list_all_issues with project_path parameter. Requires specific search terms (not wildcards like '*'). Only searches projects, blobs, and wiki_blobs scopes.",
 )(search_group)
 
 # Run the server
