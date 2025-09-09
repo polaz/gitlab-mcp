@@ -146,7 +146,7 @@ The server provides the following tools for interacting with GitLab:
 ### Issue Management
 
 - `create_issue`: Create a new issue in a GitLab repository
-- `list_all_issues`: List all issues the authenticated user has access to
+- `list_all_issues`: List issues globally or from a specific project with optional label filtering
 - `get_issue`: Get details for a specific GitLab issue
 - `close_issue`: Close a GitLab issue
 - `delete_issue`: Delete an issue from a GitLab repository
@@ -199,6 +199,11 @@ This fork includes several improvements and fixes beyond the original repository
 - **Complete label CRUD operations**: Full support for creating, reading, updating, and deleting labels at both project and group levels
 - **Label subscriptions**: Subscribe/unsubscribe functionality for project labels
 - **Enhanced issue filtering**: Added label filtering capability to `list_all_issues` for improved issue organization
+
+### Issues API Enhancement  
+- **Flexible issue querying**: Enhanced `list_all_issues` to support both global (`/issues`) and project-specific (`/projects/{id}/issues`) endpoints
+- **Optional project scoping**: Made project_path parameter optional to enable cross-project issue searches
+- **Label-based filtering**: Verified label filtering works correctly with project-specific queries (e.g., area::ux labels)
 
 ### API Compatibility & Error Handling
 - **GitLab API 18.3/18.4 compatibility**: Updated schemas and API calls to work with latest GitLab versions
