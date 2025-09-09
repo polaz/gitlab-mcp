@@ -148,15 +148,19 @@ async def create_issue(input_model: CreateIssueInput) -> GitLabIssue:
             input_model.project_path
         )
 
-        # Build payload using utility function
-        data = {
-            "title": input_model.title,
-            "description": input_model.description,
-            "labels": ",".join(input_model.labels) if input_model.labels else None,
-        }
+        # Build payload with all supported fields
+        payload = input_model.model_dump(exclude={"project_path"}, exclude_none=True)
+
+        # Handle labels field - GitLab API expects comma-separated string
+        if "labels" in payload and payload["labels"] is not None:
+            payload["labels"] = ",".join(payload["labels"])
+
+        # Handle assignee_ids field - GitLab API expects comma-separated string
+        if "assignee_ids" in payload and payload["assignee_ids"] is not None:
+            payload["assignee_ids"] = ",".join(map(str, payload["assignee_ids"]))
         # Make the API call
         response_data = await gitlab_rest_client.post_async(
-            f"/projects/{project_path}/issues", json_data=data
+            f"/projects/{project_path}/issues", json_data=payload
         )
 
         # Parse the response into our schema
