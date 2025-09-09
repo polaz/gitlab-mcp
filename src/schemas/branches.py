@@ -27,10 +27,30 @@ class AccessLevel(int, Enum):
 class CreateBranchInput(BaseModel):
     """Input model for creating a new branch in a GitLab repository.
 
+    Creates a new branch pointing to a specific commit, branch, or tag.
+
     Attributes:
-        project_path: The path of the project (e.g., 'namespace/project').
-        branch_name: The name of the branch to create.
-        ref: The reference (branch, tag, or commit) to create the branch from.
+        project_path: Full namespace path of the project (REQUIRED).
+                     Must include complete group/subgroup path.
+                     Examples: 'gitlab-org/gitlab', 'my-group/my-project'
+        branch_name: Name for the new branch (REQUIRED).
+                    Must be a valid Git branch name (no spaces, special chars).
+                    Should follow your team's naming conventions.
+                    Examples: 'feature/user-auth', 'bugfix/login-error', 'release/v2.0'
+        ref: The source reference to create the branch from (REQUIRED).
+            Can be:
+            - Branch name: 'main', 'develop', 'feature/existing'
+            - Tag name: 'v1.0.0', 'release-2023-12'
+            - Commit SHA: 'a1b2c3d4...' (full or short SHA)
+            Examples: 'main', 'v1.0.0', '1234567890abcdef'
+
+    Example Usage:
+        - Create feature branch: project_path='my/project', branch_name='feature/auth',
+          ref='main'
+        - Create from tag: project_path='my/project', branch_name='hotfix/bug',
+          ref='v1.0.0'
+        - Create from commit: project_path='my/project', branch_name='test-branch',
+          ref='abc123def'
     """
 
     project_path: str
@@ -41,13 +61,20 @@ class CreateBranchInput(BaseModel):
 class GitLabReference(GitLabResponseBase):
     """Response model for a GitLab branch or reference.
 
+    Represents a Git branch with its current state and protection settings.
+
     Attributes:
-        name: The name of the branch or reference.
-        commit: Details about the commit the reference points to.
-        merged: Whether the branch is merged.
-        protected: Whether the branch is protected.
-        default: Whether this is the default branch.
-        developers_can_push: Whether developers have push access.
+        name: The name of the branch.
+             Examples: 'main', 'feature/auth', 'release/v2.0'
+        commit: Details about the commit this branch currently points to.
+               Includes SHA, message, author info, etc.
+        merged: Whether this branch has been merged into the default branch.
+               true = merged (safe to delete), false = unmerged
+        protected: Whether this branch has protection rules enabled.
+                  Protected branches have restrictions on who can push/merge.
+        default: Whether this is the default branch for the project.
+                Usually only one branch (typically 'main') is default.
+        developers_can_push: Whether users with Developer role can push directly.
         developers_can_merge: Whether developers have merge access.
         can_push: Whether the current user can push to this branch.
         web_url: URL to view the branch in the GitLab web interface.
@@ -67,7 +94,6 @@ class GitLabReference(GitLabResponseBase):
 class GitLabBranchList(BaseResponseList[GitLabReference]):
     """Response model for a list of GitLab branches."""
 
-    pass
 
 
 class GetDefaultBranchRefInput(BaseModel):
