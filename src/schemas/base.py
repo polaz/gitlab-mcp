@@ -1,6 +1,11 @@
+from __future__ import annotations
+
 from enum import Enum
+from typing import Generic, TypeVar
 
 from pydantic import BaseModel
+
+T = TypeVar('T')
 
 
 class GitLabResponseBase(BaseModel):
@@ -8,7 +13,7 @@ class GitLabResponseBase(BaseModel):
 
 
 
-class BaseResponseList[T](GitLabResponseBase):
+class BaseResponseList(GitLabResponseBase, Generic[T]):
     """Base class for list responses from the GitLab API.
 
     Provides a consistent structure for all list-type responses that contain
@@ -21,7 +26,7 @@ class BaseResponseList[T](GitLabResponseBase):
     items: list[T]
 
 
-class PaginatedResponse[T](GitLabResponseBase):
+class PaginatedResponse(GitLabResponseBase, Generic[T]):
     """Base class for paginated GitLab API responses.
 
     Provides a consistent structure for all paginated responses from the GitLab API.
