@@ -9,6 +9,16 @@ from src.schemas.groups import (
     GitLabGroupListResponse,
     ListGroupsInput,
 )
+from src.schemas.labels import (
+    CreateLabelInput,
+    DeleteLabelInput,
+    GetLabelInput,
+    GitLabLabel,
+    GitLabLabelListResponse,
+    ListLabelsInput,
+    UpdateLabelInput,
+)
+from src.services import labels
 
 
 async def list_groups(input_model: ListGroupsInput) -> GitLabGroupListResponse:
@@ -70,7 +80,7 @@ async def get_group(input_model: GetGroupInput) -> GitLabGroup:
         input_model: The input model containing the group ID or path.
 
     Returns:
-        GitLabGroup: The requested group.
+        GitLabGroup: The requested group, optionally with labels.
 
     Raises:
         GitLabAPIError: If the group does not exist or if retrieving the group fails.
@@ -83,7 +93,19 @@ async def get_group(input_model: GetGroupInput) -> GitLabGroup:
         response = await gitlab_rest_client.get_async(f"/groups/{group_id}")
 
         # Parse the response into our schema
-        return GitLabGroup.model_validate(response)
+        group = GitLabGroup.model_validate(response)
+
+        # If labels are requested, fetch them separately
+        if input_model.with_labels:
+            try:
+                label_input = ListLabelsInput(group_id=input_model.group_id, per_page=100)
+                labels_response = await list_group_labels(label_input)
+                group.labels = [label.name for label in labels_response.items]
+            except GitLabAPIError:
+                # If fetching labels fails, just set empty list and continue
+                group.labels = []
+
+        return group
     except GitLabAPIError as exc:
         if "not found" in str(exc).lower():
             raise GitLabAPIError(
@@ -140,3 +162,114 @@ async def get_group_by_project_namespace(
             },
             code=500,
         ) from exc
+
+
+# Group Label Management Functions
+
+async def list_group_labels(input_model: ListLabelsInput) -> GitLabLabelListResponse:
+    """List labels for a GitLab group using the REST API.
+
+    This is a convenience function that calls the labels service with group-specific parameters.
+
+    Args:
+        input_model: The input model containing the group ID and filter parameters.
+
+    Returns:
+        GitLabLabelListResponse: The list of group labels.
+
+    Raises:
+        GitLabAPIError: If retrieving the group labels fails.
+    """
+    if not input_model.group_id:
+        raise GitLabAPIError(
+            GitLabErrorType.BAD_REQUEST,
+            {"operation": "list_group_labels", "message": "group_id is required"},
+            code=400,
+        )
+
+    return await labels.list_labels(input_model)
+
+
+async def get_group_label(input_model: GetLabelInput) -> GitLabLabel:
+    """Get a specific label from a GitLab group using the REST API.
+
+    Args:
+        input_model: The input model containing the group ID and label identifier.
+
+    Returns:
+        GitLabLabel: The requested group label.
+
+    Raises:
+        GitLabAPIError: If the label does not exist or if retrieving the label fails.
+    """
+    if not input_model.group_id:
+        raise GitLabAPIError(
+            GitLabErrorType.BAD_REQUEST,
+            {"operation": "get_group_label", "message": "group_id is required"},
+            code=400,
+        )
+
+    return await labels.get_label(input_model)
+
+
+async def create_group_label(input_model: CreateLabelInput) -> GitLabLabel:
+    """Create a new label in a GitLab group using the REST API.
+
+    Args:
+        input_model: The input model containing label creation parameters for the group.
+
+    Returns:
+        GitLabLabel: The created group label.
+
+    Raises:
+        GitLabAPIError: If creating the group label fails.
+    """
+    if not input_model.group_id:
+        raise GitLabAPIError(
+            GitLabErrorType.BAD_REQUEST,
+            {"operation": "create_group_label", "message": "group_id is required"},
+            code=400,
+        )
+
+    return await labels.create_label(input_model)
+
+
+async def update_group_label(input_model: UpdateLabelInput) -> GitLabLabel:
+    """Update a label in a GitLab group using the REST API.
+
+    Args:
+        input_model: The input model containing label update parameters for the group.
+
+    Returns:
+        GitLabLabel: The updated group label.
+
+    Raises:
+        GitLabAPIError: If updating the group label fails.
+    """
+    if not input_model.group_id:
+        raise GitLabAPIError(
+            GitLabErrorType.BAD_REQUEST,
+            {"operation": "update_group_label", "message": "group_id is required"},
+            code=400,
+        )
+
+    return await labels.update_label(input_model)
+
+
+async def delete_group_label(input_model: DeleteLabelInput) -> None:
+    """Delete a label from a GitLab group using the REST API.
+
+    Args:
+        input_model: The input model containing the group ID and label identifier.
+
+    Raises:
+        GitLabAPIError: If deleting the group label fails.
+    """
+    if not input_model.group_id:
+        raise GitLabAPIError(
+            GitLabErrorType.BAD_REQUEST,
+            {"operation": "delete_group_label", "message": "group_id is required"},
+            code=400,
+        )
+
+    await labels.delete_label(input_model)

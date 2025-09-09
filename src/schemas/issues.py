@@ -66,6 +66,7 @@ class GitLabIssue(GitLabResponseBase):
         description: The description of the issue.
         state: The state of the issue (opened or closed).
         web_url: The web URL of the issue.
+        labels: List of labels associated with the issue.
         _links: Links related to the issue.
     """
 
@@ -76,6 +77,7 @@ class GitLabIssue(GitLabResponseBase):
     description: str | None = None
     state: str
     web_url: str
+    labels: list[str] | None = None
 
 
 class CreateIssueInput(BaseModel):
@@ -159,6 +161,7 @@ class ListIssuesInput(BaseModel):
     Attributes:
         project_path: The path of the project (e.g., 'namespace/project').
         state: The state of the issues to filter (opened, closed, or all).
+        labels: Comma-separated list of label names to filter issues by.
         confidential: Whether to filter confidential issues.
         page: The page number for pagination.
         per_page: The number of items per page.
@@ -166,6 +169,7 @@ class ListIssuesInput(BaseModel):
 
     project_path: str
     state: str | None = None
+    labels: str | None = None
     confidential: bool | None = None
     page: int = 1
     per_page: int = 20

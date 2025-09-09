@@ -38,6 +38,7 @@ class GitLabGroup(GitLabResponseBase):
         visibility: The visibility level of the group.
         web_url: The web URL of the group.
         parent_id: The ID of the parent group, if any.
+        labels: Optional list of labels associated with the group.
     """
 
     id: int
@@ -47,6 +48,7 @@ class GitLabGroup(GitLabResponseBase):
     visibility: VisibilityLevel
     web_url: str
     parent_id: int | None = None
+    labels: list[str] | None = None
 
 
 class ListGroupsInput(BaseModel):
@@ -80,9 +82,11 @@ class GetGroupInput(BaseModel):
 
     Attributes:
         group_id: The ID or path of the group.
+        with_labels: Whether to include labels in the response.
     """
 
     group_id: str
+    with_labels: bool = False
 
 
 class CreateGroupInput(BaseModel):
