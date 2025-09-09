@@ -175,7 +175,7 @@ class BlobSearchResult(SearchResult):
     id: str | None = None
     ref: str
     startline: int
-    project_id: int
+    project_id: int | None = None
 
 
 class IssueSearchResult(SearchResult):
