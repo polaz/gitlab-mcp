@@ -232,14 +232,17 @@ class ListIssueCommentsInput(BaseModel):
 
 
 class ListIssuesInput(BaseModel):
-    """Input model for listing issues in a GitLab project.
+    """Input model for listing issues in a GitLab project or globally.
 
-    Retrieves a paginated list of issues from a specific project with optional filtering.
+    Retrieves a paginated list of issues with optional filtering.
+    If project_path is provided, lists issues from that specific project.
+    If project_path is not provided, lists all issues the user has access to globally.
 
     Attributes:
-        project_path: The full namespace path of the project (REQUIRED).
-                     Must include the complete group/subgroup path.
+        project_path: The full namespace path of the project (OPTIONAL).
+                     Must include the complete group/subgroup path when provided.
                      Examples: 'gitlab-org/gitlab', 'my-group/subgroup/project'
+                     If not provided, searches globally across all accessible issues.
         state: Filter issues by state (OPTIONAL).
                Valid values: 'opened', 'closed', 'all'
                Default: Returns all issues regardless of state.
@@ -252,11 +255,12 @@ class ListIssuesInput(BaseModel):
         per_page: Number of issues per page (1-100, default 20).
 
     Example Usage:
-        - List all open bugs: project_path='my-org/project', state='opened', labels='bug'
-        - List all issues: project_path='group/project'
+        - List all open bugs in project: project_path='my-org/project', state='opened', labels='bug'
+        - List all issues in project: project_path='group/project'
+        - List all global issues: (no project_path specified)
     """
 
-    project_path: str
+    project_path: str | None = None
     state: str | None = None
     labels: str | None = None
     confidential: bool | None = None

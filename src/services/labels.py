@@ -318,7 +318,7 @@ async def subscribe_to_label(input_model: SubscribeToLabelInput) -> GitLabLabel:
 
     try:
         # Make the API call
-        response = await gitlab_rest_client.post_async(endpoint)
+        response = await gitlab_rest_client.post_async(endpoint, json_data={})
 
         # Parse the response into our schema
         return GitLabLabel.model_validate(response)
@@ -355,7 +355,7 @@ async def unsubscribe_from_label(input_model: UnsubscribeFromLabelInput) -> GitL
 
     try:
         # Make the API call
-        response = await gitlab_rest_client.post_async(endpoint)
+        response = await gitlab_rest_client.post_async(endpoint, json_data={})
 
         # Parse the response into our schema
         return GitLabLabel.model_validate(response)

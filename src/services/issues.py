@@ -18,7 +18,10 @@ from src.schemas.issues import (
 
 
 async def list_all_issues(input_model: ListIssuesInput) -> GitLabIssueListResponse:
-    """List all issues the authenticated user has access to.
+    """List issues from a specific project or all issues the authenticated user has access to.
+
+    If project_path is provided, lists issues from that specific project.
+    If project_path is not provided, lists all issues the user has access to globally.
 
     Args:
         input_model: The input model containing filter parameters.
@@ -34,10 +37,27 @@ async def list_all_issues(input_model: ListIssuesInput) -> GitLabIssueListRespon
         params = {
             "page": input_model.page,
             "per_page": input_model.per_page,
-            "state": input_model.state,
         }
+
+        # Add optional parameters
+        if input_model.state:
+            params["state"] = input_model.state
+        if input_model.labels:
+            params["labels"] = input_model.labels
+        if input_model.confidential is not None:
+            params["confidential"] = input_model.confidential
+
+        # Determine endpoint based on whether project_path is provided
+        if input_model.project_path:
+            # Project-specific issues
+            project_path = gitlab_rest_client._encode_path_parameter(input_model.project_path)
+            endpoint = f"/projects/{project_path}/issues"
+        else:
+            # Global issues
+            endpoint = "/issues"
+
         # Make the API call
-        response_data = await gitlab_rest_client.get_async("/issues", params=params)
+        response_data = await gitlab_rest_client.get_async(endpoint, params=params)
 
         # Get total count
         total_count = len(response_data)
