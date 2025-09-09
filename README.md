@@ -148,6 +148,7 @@ The server provides the following tools for interacting with GitLab:
 - `create_issue`: Create a new issue in a GitLab repository
 - `list_all_issues`: List issues globally or from a specific project with optional label filtering
 - `get_issue`: Get details for a specific GitLab issue
+- `update_issue`: Update an existing issue with comprehensive field support including assignees, labels, state, milestones, and metadata
 - `close_issue`: Close a GitLab issue
 - `delete_issue`: Delete an issue from a GitLab repository
 - `move_issue`: Move an issue to a different project
@@ -204,6 +205,7 @@ This fork includes several improvements and fixes beyond the original repository
 - **Flexible issue querying**: Enhanced `list_all_issues` to support both global (`/issues`) and project-specific (`/projects/{id}/issues`) endpoints
 - **Optional project scoping**: Made project_path parameter optional to enable cross-project issue searches
 - **Label-based filtering**: Verified label filtering works correctly with project-specific queries (e.g., area::ux labels)
+- **Comprehensive issue updates**: Added `update_issue` function with full GitLab API support for assignees, labels, milestones, epic linking, and metadata
 
 ### API Compatibility & Error Handling
 - **GitLab API 18.3/18.4 compatibility**: Updated schemas and API calls to work with latest GitLab versions

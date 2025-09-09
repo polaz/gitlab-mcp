@@ -48,6 +48,7 @@ from src.services.issues import (
     list_all_issues,
     list_issue_comments,
     move_issue,
+    update_issue,
 )
 from src.services.jobs import (
     get_job_logs,
@@ -146,6 +147,10 @@ mcp.tool(name="get_issue", description="Get details for a specific GitLab issue.
     get_issue
 )
 mcp.tool(name="close_issue", description="Close a GitLab issue.")(close_issue)
+mcp.tool(
+    name="update_issue",
+    description="Update an existing issue in a GitLab repository with comprehensive field support including assignees, labels, state, and metadata."
+)(update_issue)
 mcp.tool(name="delete_issue", description="Delete an issue from a GitLab repository.")(
     delete_issue
 )
