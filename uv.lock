@@ -133,6 +133,11 @@ ruff = [
     { name = "ruff" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "mypy" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "asyncio", specifier = ">=3.4.3" },
@@ -149,6 +154,9 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'ruff'", specifier = ">=0.11.5" },
 ]
 provides-extras = ["dev", "ruff"]
+
+[package.metadata.requires-dev]
+dev = [{ name = "mypy", specifier = ">=1.15.0" }]
 
 [[package]]
 name = "h11"

@@ -87,21 +87,24 @@ gitlab-mcp/
 │   │   ├── issues.py              # Issue data models
 │   │   ├── merge_requests.py      # Merge request data models
 │   │   ├── groups.py              # Group data models
-│   │   └── search.py              # search data models
+│   │   ├── labels.py              # Label data models
+│   │   └── search.py              # Search data models
 │   ├── services/                  # Business logic layer
 │   │   ├── repositories.py        # Repository operations
 │   │   ├── branches.py            # Branch operations
 │   │   ├── issues.py              # Issue operations
 │   │   ├── merge_requests.py      # Merge request operations
 │   │   ├── groups.py              # Group operations
-│   │   └── search.py              # search operations
+│   │   ├── labels.py              # Label operations
+│   │   └── search.py              # Search operations
 │   └── tools/                     # MCP tool implementations
 │       ├── repositories.py        # Repository tools
 │       ├── branches.py            # Branch tools
 │       ├── issues.py              # Issue tools
 │       ├── merge_requests.py      # Merge request tools
 │       ├── groups.py              # Group tools
-│       └── search.py              # search tools
+│       ├── labels.py              # Label tools
+│       └── search.py              # Search tools
 ├── server.py                      # Main MCP server entry point
 ```
 
@@ -177,6 +180,47 @@ The server provides the following tools for interacting with GitLab:
 - `search_globally`: Search across all GitLab resources (currently supports projects and files/blobs).
 - `search_project`: Search within a specific project (currently supports projects and files/blobs).
 - `search_group`: Search within a specific group (currently supports projects and files/blobs).
+
+### Label Operations
+
+- `list_labels`: List GitLab labels at project or group level
+- `get_label`: Get details for a specific GitLab label
+- `create_label`: Create a new GitLab label
+- `update_label`: Update an existing GitLab label
+- `delete_label`: Delete a GitLab label
+- `subscribe_to_label`: Subscribe to a GitLab project label
+- `unsubscribe_from_label`: Unsubscribe from a GitLab project label
+
+## Project Enhancements
+
+This fork includes several improvements and fixes beyond the original repository:
+
+### Label Management System
+- **Complete label CRUD operations**: Full support for creating, reading, updating, and deleting labels at both project and group levels
+- **Label subscriptions**: Subscribe/unsubscribe functionality for project labels
+- **Enhanced issue filtering**: Added label filtering capability to `list_all_issues` for improved issue organization
+
+### API Compatibility & Error Handling
+- **GitLab API 18.3/18.4 compatibility**: Updated schemas and API calls to work with latest GitLab versions
+- **Improved error handling**: Fixed recursive error wrapping in group operations that was creating confusing nested error messages
+- **Parameter validation**: Enhanced parameter handling to prevent invalid API calls (e.g., null state values)
+
+### Schema & Type Safety
+- **Modern Python 3.13 support**: Updated generic type syntax from `Generic[T]` to modern `[T]` syntax
+- **Flexible data models**: Made optional fields truly optional in GitLabLabel schema to handle API response variations
+- **Better validation**: Improved Pydantic schema validation for edge cases
+
+### Code Quality & Architecture
+- **Fixed parameter naming**: Corrected `data` vs `json_data` parameter mismatches in REST client calls
+- **Environment loading**: Added proper .env file loading for configuration management
+- **Comprehensive testing**: All label functions verified against live GitLab API
+- **Python version flexibility**: Supports both Python 3.12 and 3.13 with proper virtual environment management
+
+### Bug Fixes
+- Fixed syntax errors in base schema classes
+- Resolved POST/PUT request parameter naming inconsistencies
+- Corrected subscribe/unsubscribe functions missing required parameters
+- Fixed group label fetching errors due to schema mismatches
 
 ## Troubleshooting
 
