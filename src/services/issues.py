@@ -14,6 +14,7 @@ from src.schemas.issues import (
     ListIssueCommentsInput,
     ListIssuesInput,
     MoveIssueInput,
+    UpdateIssueInput,
 )
 
 
@@ -219,6 +220,63 @@ async def close_issue(input_model: GetIssueInput) -> GitLabIssue:
         raise GitLabAPIError(
             GitLabErrorType.SERVER_ERROR,
             {"message": "Internal error closing issue", "operation": "close_issue"},
+        ) from exc
+
+
+async def update_issue(input_model: UpdateIssueInput) -> GitLabIssue:
+    """Update an existing issue in a GitLab project using the REST API.
+
+    Args:
+        input_model: The input model containing the issue update fields.
+
+    Returns:
+        GitLabIssue: The updated issue.
+
+    Raises:
+        GitLabAPIError: If updating the issue fails.
+    """
+    try:
+        # URL encode the project path
+        project_path = gitlab_rest_client._encode_path_parameter(
+            input_model.project_path
+        )
+
+        # Build payload using model dump, excluding path parameters
+        payload = input_model.model_dump(
+            exclude={"project_path", "issue_iid"},
+            exclude_none=True,
+        )
+
+        # Handle label fields - GitLab API expects comma-separated strings
+        for key in ("labels", "add_labels", "remove_labels"):
+            if key in payload and payload[key] is not None:
+                payload[key] = ",".join(payload[key])
+
+        # Make the API call
+        response_data = await gitlab_rest_client.put_async(
+            f"/projects/{project_path}/issues/{input_model.issue_iid}",
+            json_data=payload
+        )
+
+        # Parse the response into our schema
+        return GitLabIssue.model_validate(response_data)
+    except GitLabAPIError as exc:
+        if "not found" in str(exc).lower():
+            raise GitLabAPIError(
+                GitLabErrorType.NOT_FOUND,
+                {"message": f"Issue {input_model.issue_iid} not found"},
+            ) from exc
+        raise GitLabAPIError(
+            GitLabErrorType.REQUEST_FAILED,
+            {
+                "message": f"Failed to update issue {input_model.issue_iid}",
+                "operation": "update_issue",
+            },
+        ) from exc
+    except Exception as exc:
+        raise GitLabAPIError(
+            GitLabErrorType.SERVER_ERROR,
+            {"message": "Internal error updating issue", "operation": "update_issue"},
         ) from exc
 
 

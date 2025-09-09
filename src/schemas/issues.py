@@ -268,6 +268,83 @@ class ListIssuesInput(BaseModel):
     per_page: int = 20
 
 
+class UpdateIssueInput(BaseModel):
+    """Input model for updating an existing issue in a GitLab project.
+
+    Updates properties of an existing issue. Only provided fields will be changed.
+
+    Attributes:
+        project_path: The full namespace path of the project (REQUIRED).
+                     Must include the complete group/subgroup path.
+                     Examples: 'gitlab-org/gitlab', 'my-group/my-project'
+        issue_iid: The internal issue ID to update (REQUIRED).
+                  This is the issue number shown in GitLab UI (e.g., #123).
+                  Example: 42 for issue #42.
+        title: New title for the issue (OPTIONAL).
+              Examples: 'Updated feature request', 'Fix: Authentication bug'
+        description: New description for the issue (OPTIONAL).
+                    Supports GitLab Flavored Markdown.
+                    Pass empty string to clear description.
+        state_event: Change the issue state (OPTIONAL).
+                    Values: 'close', 'reopen'
+                    Examples: 'close' to close issue, 'reopen' to reopen closed issue
+        assignee_ids: List of user IDs to assign as assignees (OPTIONAL).
+                     Replaces existing assignees. Issues can have multiple assignees.
+                     Examples: [123, 456], [] (to clear assignees)
+                     Note: Issues only support assignees, not reviewers (unlike merge requests)
+        milestone_id: Milestone ID to assign to the issue (OPTIONAL).
+                     Examples: 123, null (to clear milestone)
+        labels: List of label names to replace existing labels (OPTIONAL).
+               Replaces ALL existing labels.
+               Examples: ['bug', 'frontend'], [] (to clear all labels)
+        add_labels: List of label names to add to existing labels (OPTIONAL).
+                   Keeps existing labels and adds these.
+                   Examples: ['priority::high'], ['area::ux']
+        remove_labels: List of label names to remove from existing labels (OPTIONAL).
+                      Examples: ['wip'], ['needs-review']
+        discussion_locked: Lock discussions on the issue (OPTIONAL).
+        due_date: ISO 8601 date for issue due date (OPTIONAL).
+                 Examples: '2024-12-31', null (to clear due date)
+        weight: Issue weight for project management (OPTIONAL).
+               Examples: 5, null (to clear weight)
+        epic_id: Epic ID to associate issue with (OPTIONAL, GitLab Premium).
+        epic_iid: Epic internal ID to associate issue with (OPTIONAL, GitLab Premium).
+        confidential: Make issue confidential (OPTIONAL).
+                     Examples: true, false
+        issue_type: Type of issue (OPTIONAL).
+                   Values: 'issue', 'incident', 'test_case', 'requirement', 'task'
+        iteration_id: Iteration ID to assign issue to (OPTIONAL, GitLab Premium).
+                     Examples: 15, null (to clear iteration)
+
+    Example Usage:
+        - Update title: project_path='my/project', issue_iid=15, title='New title'
+        - Add labels: project_path='my/project', issue_iid=15, add_labels=['area::backend', 'kind::bug']
+        - Close issue: project_path='my/project', issue_iid=15, state_event='close'
+        - Update assignees: project_path='my/project', issue_iid=15, assignee_ids=[123, 456]
+        - Set milestone: project_path='my/project', issue_iid=15, milestone_id=10
+        - Link to epic (Premium): project_path='my/project', issue_iid=15, epic_id=42
+    """
+
+    project_path: str
+    issue_iid: int
+    title: str | None = None
+    description: str | None = None
+    state_event: str | None = None
+    assignee_ids: list[int] | None = None
+    milestone_id: int | None = None
+    labels: list[str] | None = None
+    add_labels: list[str] | None = None
+    remove_labels: list[str] | None = None
+    discussion_locked: bool | None = None
+    due_date: str | None = None
+    weight: int | None = None
+    epic_id: int | None = None
+    epic_iid: int | None = None
+    confidential: bool | None = None
+    issue_type: str | None = None
+    iteration_id: int | None = None
+
+
 class GitLabIssueListResponse(PaginatedResponse[GitLabIssue]):
     """Paginated response model for a list of GitLab issues.
 
