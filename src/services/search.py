@@ -9,8 +9,13 @@ from src.api.custom_exceptions import GitLabAPIError, GitLabErrorType
 from src.api.rest_client import gitlab_rest_client
 from src.schemas.search import (
     BlobSearchResult,
+    CommitSearchResult,
     GlobalSearchRequest,
     GroupSearchRequest,
+    IssueSearchResult,
+    MergeRequestSearchResult,
+    MilestoneSearchResult,
+    NoteSearchResult,
     ProjectSearchRequest,
     ProjectSearchResult,
     SearchScope,
@@ -20,24 +25,37 @@ from src.schemas.search import (
 def _parse_search_results(
     response: list[dict[str, Any]], scope: SearchScope
 ) -> list[Any]:
-    """Parse search results for projects/blobs only, returning only minimal fields."""
+    """Parse search results for all supported scopes, returning structured objects."""
     result_map = {
         SearchScope.PROJECTS: ProjectSearchResult,
         SearchScope.BLOBS: BlobSearchResult,
         SearchScope.WIKI_BLOBS: BlobSearchResult,
+        SearchScope.ISSUES: IssueSearchResult,
+        SearchScope.MERGE_REQUESTS: MergeRequestSearchResult,
+        SearchScope.COMMITS: CommitSearchResult,
+        SearchScope.MILESTONES: MilestoneSearchResult,
+        SearchScope.NOTES: NoteSearchResult,
     }
     model_class = result_map.get(scope)
     if model_class is None:
         raise UnsupportedSearchScopeError(scope)
-    minimal_keys = set(model_class.model_fields.keys())
-    return [
-        model_class.model_validate({k: v for k, v in item.items() if k in minimal_keys})
-        for item in response
-    ]
+
+    # For better error handling, parse each item individually
+    results = []
+    for item in response:
+        try:
+            # Let Pydantic handle field validation and filtering
+            results.append(model_class.model_validate(item))
+        except Exception as e:
+            # Log the error but continue processing other items
+            print(f"Warning: Failed to parse search result item: {e}")
+            continue
+
+    return results
 
 
 async def search_globally(search_term: str, scope: SearchScope) -> list[Any]:
-    """Search across all resources in the GitLab instance (projects/blobs only)."""
+    """Search across all resources in the GitLab instance (all scopes supported)."""
     try:
         search_request = GlobalSearchRequest(scope=scope, search=search_term)
         response = await gitlab_rest_client.get_async(
@@ -71,7 +89,7 @@ async def search_globally(search_term: str, scope: SearchScope) -> list[Any]:
 async def search_group(
     group_id: str, search_term: str, scope: SearchScope
 ) -> list[Any]:
-    """Search within a specific group (projects/blobs only)."""
+    """Search within a specific group (all scopes supported)."""
     try:
         search_request = GroupSearchRequest(
             group_id=group_id, scope=scope, search=search_term
@@ -110,7 +128,7 @@ async def search_group(
 
 
 async def search_project(input_model: ProjectSearchRequest) -> list[Any]:
-    """Search within a specific project using a validated input model (projects/blobs only)."""
+    """Search within a specific project using a validated input model (all scopes supported)."""
 
     try:
         params = {

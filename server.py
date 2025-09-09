@@ -18,6 +18,7 @@ except ImportError:
 
 from mcp.server.fastmcp import FastMCP
 
+from src.schemas.search import GlobalSearchRequest, GroupSearchRequest
 from src.services.branches import (
     create_branch,
     delete_branch,
@@ -225,19 +226,28 @@ mcp.tool(
 )(get_group_by_project_namespace)
 
 
+# Wrapper functions for search tools to handle MCP input model format
+async def search_globally_wrapper(input_model: GlobalSearchRequest):
+    """Wrapper for search_globally to handle MCP input model format."""
+    return await search_globally(input_model.search, input_model.scope)
+
+async def search_group_wrapper(input_model: GroupSearchRequest):
+    """Wrapper for search_group to handle MCP input model format."""
+    return await search_group(input_model.group_id, input_model.search, input_model.scope)
+
 # Register search tools
 mcp.tool(
     name="search_project",
-    description="Search for file contents (blobs), wiki content, and project metadata within a specific GitLab project. IMPORTANT: Does NOT search issues, merge requests, or other GitLab objects. For project issues, use list_all_issues with the project_path parameter. Requires specific search terms (not wildcards like '*').",
+    description="Search within a specific GitLab project across all content types. Supports multiple scopes: 'projects' (metadata), 'blobs' (file contents), 'wiki_blobs' (wiki pages), 'issues' (titles/descriptions), 'merge_requests' (titles/descriptions), 'commits' (messages/content), 'milestones', and 'notes' (comments). Perfect for finding specific content within a project. Requires specific search terms (minimum 3 characters, no wildcards like '*').",
 )(search_project)
 mcp.tool(
     name="search_globally",
-    description="Search for projects, file contents (blobs), and wiki content across all GitLab instances you have access to. IMPORTANT: Does NOT search issues, merge requests, or other GitLab objects. For issues, use list_all_issues without project_path for global search. Requires specific search terms (not wildcards like '*').",
-)(search_globally)
+    description="Search across ALL GitLab content you have access to, supporting multiple scopes: 'projects' (metadata), 'blobs' (file contents), 'wiki_blobs' (wiki pages), 'issues' (titles/descriptions), 'merge_requests' (titles/descriptions), 'commits' (messages/content), 'milestones', and 'notes' (comments). Most comprehensive search - finds content across all accessible projects and groups. Requires specific search terms (minimum 3 characters, no wildcards like '*').",
+)(search_globally_wrapper)
 mcp.tool(
     name="search_group",
-    description="Search for projects, file contents (blobs), and wiki content within a specific GitLab group. IMPORTANT: Does NOT search issues, merge requests, or other GitLab objects. For issues, use list_all_issues with project_path parameter. Requires specific search terms (not wildcards like '*'). Only searches projects, blobs, and wiki_blobs scopes.",
-)(search_group)
+    description="Search within a specific GitLab group and its projects/subgroups across all content types. Supports multiple scopes: 'projects' (metadata), 'blobs' (file contents), 'wiki_blobs' (wiki pages), 'issues' (titles/descriptions), 'merge_requests' (titles/descriptions), 'commits' (messages/content), 'milestones', and 'notes' (comments). More focused than global search, faster results. Requires specific search terms (minimum 3 characters, no wildcards like '*').",
+)(search_group_wrapper)
 
 # Register epic tools
 mcp.tool(
