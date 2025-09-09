@@ -178,9 +178,9 @@ The server provides the following tools for interacting with GitLab:
 
 ### Search Tools
 
-- `search_globally`: Search across all GitLab resources (currently supports projects and files/blobs).
-- `search_project`: Search within a specific project (currently supports projects and files/blobs).
-- `search_group`: Search within a specific group (currently supports projects and files/blobs).
+- `search_globally`: Search for projects, file contents (blobs), and wiki content across all accessible GitLab instances. Does NOT search issues or merge requests.
+- `search_project`: Search for file contents (blobs), wiki content, and project metadata within a specific project. Does NOT search issues or merge requests.
+- `search_group`: Search for projects, file contents (blobs), and wiki content within a specific group. Does NOT search issues or merge requests.
 
 ### Label Operations
 
@@ -222,6 +222,7 @@ This fork includes several improvements and fixes beyond the original repository
 - **Environment loading**: Added proper .env file loading for configuration management
 - **Comprehensive testing**: All label functions verified against live GitLab API
 - **Python version flexibility**: Supports both Python 3.12 and 3.13 with proper virtual environment management
+- **Clarified tool limitations**: Enhanced search tool descriptions to prevent misuse (e.g., searching for issues when tools only support projects/blobs)
 
 ### Bug Fixes
 - Fixed syntax errors in base schema classes
