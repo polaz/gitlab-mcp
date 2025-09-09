@@ -190,37 +190,26 @@ async def create_label(input_model: CreateLabelInput) -> GitLabLabel:
         raise GitLabAPIError(GitLabErrorType.SERVER_ERROR, context, code=500) from exc
 
 
-async def update_label(input_model: UpdateLabelInput) -> GitLabLabel:
-    """Update an existing GitLab label using the REST API.
-
-    Args:
-        input_model: The input model containing label update parameters.
-
-    Returns:
-        GitLabLabel: The updated label.
-
-    Raises:
-        GitLabAPIError: If updating the label fails.
-    """
-    # Determine the API endpoint based on input
-    if input_model.project_path:
-        # Project-level label
-        project_path = gitlab_rest_client._encode_path_parameter(input_model.project_path)
-        label_id = gitlab_rest_client._encode_path_parameter(input_model.label_id)
-        endpoint = f"/projects/{project_path}/labels/{label_id}"
-    elif input_model.group_id:
-        # Group-level label
-        group_id = gitlab_rest_client._encode_path_parameter(input_model.group_id)
-        label_id = gitlab_rest_client._encode_path_parameter(input_model.label_id)
-        endpoint = f"/groups/{group_id}/labels/{label_id}"
+def _get_label_endpoint(project_path: str | None, group_id: str | None, label_id: str) -> str:
+    """Get the API endpoint for label operations."""
+    if project_path:
+        project_encoded = gitlab_rest_client._encode_path_parameter(project_path)
+        label_encoded = gitlab_rest_client._encode_path_parameter(label_id)
+        return f"/projects/{project_encoded}/labels/{label_encoded}"
+    elif group_id:
+        group_encoded = gitlab_rest_client._encode_path_parameter(group_id)
+        label_encoded = gitlab_rest_client._encode_path_parameter(label_id)
+        return f"/groups/{group_encoded}/labels/{label_encoded}"
     else:
         raise GitLabAPIError(
             GitLabErrorType.BAD_REQUEST,
-            {"operation": "update_label", "message": "Either project_path or group_id must be provided"},
+            {"message": "Either project_path or group_id must be provided"},
             code=400,
         )
 
-    # Prepare the request data with only non-None values
+
+def _build_update_data(input_model: UpdateLabelInput) -> dict:
+    """Build the update data dictionary from input model."""
     data = {}
     if input_model.new_name:
         data["new_name"] = input_model.new_name
@@ -234,15 +223,29 @@ async def update_label(input_model: UpdateLabelInput) -> GitLabLabel:
     if not data:
         raise GitLabAPIError(
             GitLabErrorType.BAD_REQUEST,
-            {"operation": "update_label", "message": "At least one field to update must be provided"},
+            {"message": "At least one field to update must be provided"},
             code=400,
         )
+    return data
+
+
+async def update_label(input_model: UpdateLabelInput) -> GitLabLabel:
+    """Update an existing GitLab label using the REST API.
+
+    Args:
+        input_model: The input model containing label update parameters.
+
+    Returns:
+        GitLabLabel: The updated label.
+
+    Raises:
+        GitLabAPIError: If updating the label fails.
+    """
+    endpoint = _get_label_endpoint(input_model.project_path, input_model.group_id, input_model.label_id)
+    data = _build_update_data(input_model)
 
     try:
-        # Make the API call
         response = await gitlab_rest_client.put_async(endpoint, data=data)
-
-        # Parse the response into our schema
         return GitLabLabel.model_validate(response)
     except GitLabAPIError:
         raise  # Re-raise GitLabAPIError as is
