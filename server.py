@@ -28,6 +28,17 @@ from src.services.branches import (
     protect_branch,
     unprotect_branch,
 )
+from src.services.epics import (
+    assign_issue_to_epic,
+    create_epic,
+    delete_epic,
+    get_epic,
+    list_epic_issues,
+    list_epics,
+    remove_issue_from_epic,
+    update_epic,
+    update_epic_issue_association,
+)
 from src.services.files import (
     create_file,
     delete_file,
@@ -226,6 +237,52 @@ mcp.tool(
     name="search_group",
     description="Search for projects, file contents (blobs), and wiki content within a specific GitLab group. IMPORTANT: Does NOT search issues, merge requests, or other GitLab objects. For issues, use list_all_issues with project_path parameter. Requires specific search terms (not wildcards like '*'). Only searches projects, blobs, and wiki_blobs scopes.",
 )(search_group)
+
+# Register epic tools
+mcp.tool(
+    name="create_epic",
+    description="Create a new epic in a GitLab group. Epics are high-level containers for organizing related issues and child epics, available in GitLab Premium/Ultimate. Supports title, description, labels, dates, confidentiality, parent epic hierarchy, and visual organization with colors. Perfect for project planning, feature grouping, and milestone tracking.",
+)(create_epic)
+
+mcp.tool(
+    name="list_epics",
+    description="List epics in a GitLab group with comprehensive filtering. Filter by state (opened/closed), labels, author, search terms, date ranges, and hierarchy options. Supports pagination and includes ancestor/descendant group searching. Essential for epic discovery, project overview, and team planning workflows.",
+)(list_epics)
+
+mcp.tool(
+    name="get_epic",
+    description="Get detailed information for a specific epic in a GitLab group. Retrieves complete epic metadata including title, description, state, dates, labels, author, hierarchy relationships, and visual settings. Use this to examine epic details before updates or to display epic information in workflows.",
+)(get_epic)
+
+mcp.tool(
+    name="update_epic",
+    description="Update an existing epic in a GitLab group with comprehensive field support. Modify title, description, state (close/reopen), dates, confidentiality, parent relationships, and visual properties. Advanced label management with add/remove operations. Ideal for epic maintenance, status updates, and project reorganization.",
+)(update_epic)
+
+mcp.tool(
+    name="delete_epic",
+    description="Permanently delete an epic from a GitLab group. WARNING: This action cannot be undone and will remove all epic-issue associations (issues remain in projects). Use with caution for cleaning up obsolete epics or project restructuring. Requires appropriate permissions.",
+)(delete_epic)
+
+mcp.tool(
+    name="list_epic_issues",
+    description="List all issues currently assigned to a specific epic. Shows issue details with association metadata for project tracking and epic content overview. Essential for understanding epic scope, progress monitoring, and issue organization within epics.",
+)(list_epic_issues)
+
+mcp.tool(
+    name="assign_issue_to_epic",
+    description="Assign an issue to an epic, creating a relationship between them. If the issue was previously assigned to another epic, it will be reassigned. Use the global issue ID (not issue_iid). Perfect for organizing issues under epics, project planning, and feature grouping workflows.",
+)(assign_issue_to_epic)
+
+mcp.tool(
+    name="remove_issue_from_epic",
+    description="Remove an issue from an epic, breaking their association. The issue remains in its project but is no longer part of the epic. Requires the epic-issue association ID (get from list_epic_issues). Useful for epic reorganization and issue management.",
+)(remove_issue_from_epic)
+
+mcp.tool(
+    name="update_epic_issue_association",
+    description="Update the position/order of an issue within an epic's issue list. Reorder issues by moving before or after other issues for prioritization and organization. Use association IDs from list_epic_issues. Essential for epic planning and issue prioritization workflows.",
+)(update_epic_issue_association)
 
 # Run the server
 if __name__ == "__main__":

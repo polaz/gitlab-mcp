@@ -182,6 +182,18 @@ The server provides the following tools for interacting with GitLab:
 - `search_project`: Search for file contents (blobs), wiki content, and project metadata within a specific project. Does NOT search issues or merge requests.
 - `search_group`: Search for projects, file contents (blobs), and wiki content within a specific group. Does NOT search issues or merge requests.
 
+### Epic Operations (Premium/Ultimate)
+
+- `create_epic`: Create a new epic in a GitLab group with support for title, description, labels, dates, hierarchy, and visual organization
+- `list_epics`: List epics in a GitLab group with comprehensive filtering by state, labels, author, search terms, and date ranges
+- `get_epic`: Get detailed information for a specific epic including all metadata, relationships, and visual settings
+- `update_epic`: Update an existing epic with comprehensive field support including state changes and advanced label management
+- `delete_epic`: Permanently delete an epic from a GitLab group (removes all epic-issue associations)
+- `list_epic_issues`: List all issues currently assigned to a specific epic with association metadata
+- `assign_issue_to_epic`: Assign an issue to an epic, creating a relationship between them (reassigns if previously associated)
+- `remove_issue_from_epic`: Remove an issue from an epic, breaking their association while keeping the issue in its project
+- `update_epic_issue_association`: Update the position/order of an issue within an epic's issue list for prioritization
+
 ### Label Operations
 
 - `list_labels`: List GitLab labels at project or group level
@@ -195,6 +207,14 @@ The server provides the following tools for interacting with GitLab:
 ## Project Enhancements
 
 This fork includes several improvements and fixes beyond the original repository:
+
+### Epic Management System (Premium/Ultimate)
+- **Complete epic CRUD operations**: Full support for creating, reading, updating, and deleting epics at group level with comprehensive field support
+- **Epic-issue relationships**: Assign, remove, and reorder issues within epics for project organization and planning
+- **Advanced epic filtering**: Filter epics by state, labels, author, search terms, date ranges, and hierarchy options
+- **Epic hierarchy support**: Create parent-child epic relationships for multi-level project organization
+- **Visual organization**: Support for epic colors and visual settings for better project management
+- **Comprehensive metadata**: Full support for epic dates, confidentiality, labels, and custom fields
 
 ### Label Management System
 - **Complete label CRUD operations**: Full support for creating, reading, updating, and deleting labels at both project and group levels
