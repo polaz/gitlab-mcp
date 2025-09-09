@@ -448,7 +448,8 @@ async def assign_issue_to_epic(input_model: AssignIssueToEpicInput) -> EpicIssue
         group_id = gitlab_rest_client._encode_path_parameter(input_model.group_id)
 
         response_data = await gitlab_rest_client.post_async(
-            f"/groups/{group_id}/epics/{input_model.epic_iid}/issues/{input_model.issue_id}"
+            f"/groups/{group_id}/epics/{input_model.epic_iid}/issues/{input_model.issue_id}",
+            json_data={}
         )
         return EpicIssueAssociation.model_validate(response_data)
 
