@@ -175,7 +175,7 @@ async def create_label(input_model: CreateLabelInput) -> GitLabLabel:
 
     try:
         # Make the API call
-        response = await gitlab_rest_client.post_async(endpoint, data=data)
+        response = await gitlab_rest_client.post_async(endpoint, json_data=data)
 
         # Parse the response into our schema
         return GitLabLabel.model_validate(response)
@@ -245,7 +245,7 @@ async def update_label(input_model: UpdateLabelInput) -> GitLabLabel:
     data = _build_update_data(input_model)
 
     try:
-        response = await gitlab_rest_client.put_async(endpoint, data=data)
+        response = await gitlab_rest_client.put_async(endpoint, json_data=data)
         return GitLabLabel.model_validate(response)
     except GitLabAPIError:
         raise  # Re-raise GitLabAPIError as is
