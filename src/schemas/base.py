@@ -6,7 +6,6 @@ from pydantic import BaseModel
 class GitLabResponseBase(BaseModel):
     """Base class for GitLab API responses."""
 
-    pass
 
 
 class BaseResponseList[T](GitLabResponseBase):

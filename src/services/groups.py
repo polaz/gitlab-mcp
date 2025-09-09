@@ -101,9 +101,24 @@ async def get_group(input_model: GetGroupInput) -> GitLabGroup:
                 label_input = ListLabelsInput(group_id=input_model.group_id, per_page=100)
                 labels_response = await list_group_labels(label_input)
                 group.labels = [label.name for label in labels_response.items]
-            except GitLabAPIError:
-                # If fetching labels fails, just set empty list and continue
-                group.labels = []
+            except GitLabAPIError as exc:
+                # Only catch specific expected errors, let others bubble up
+                NOT_FOUND_CODE = 404
+                if hasattr(exc, 'code') and exc.code == NOT_FOUND_CODE:
+                    # 404 means the group has no labels or labels endpoint doesn't exist
+                    group.labels = []
+                else:
+                    # For all other errors (auth, server errors, etc.), re-raise them
+                    # so the caller knows there was a real problem
+                    raise GitLabAPIError(
+                        exc.error_type,
+                        {
+                            "operation": "fetch_group_labels",
+                            "group_id": input_model.group_id,
+                            "original_error": str(exc)
+                        },
+                        code=getattr(exc, 'code', 500)
+                    ) from exc
 
         return group
     except GitLabAPIError as exc:
@@ -273,3 +288,5 @@ async def delete_group_label(input_model: DeleteLabelInput) -> None:
         )
 
     await labels.delete_label(input_model)
+
+

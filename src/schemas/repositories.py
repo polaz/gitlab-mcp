@@ -10,13 +10,32 @@ from src.schemas.base import (
 
 
 class CreateRepositoryInput(BaseModel):
-    """Input model for creating a new GitLab repository.
+    """Input model for creating a new GitLab project/repository.
+
+    Creates a new project (GitLab's term for repositories) within a group or user namespace.
 
     Attributes:
-        name: The name of the repository (e.g., 'namespace/name').
-        description: Optional description of the repository.
-        visibility: The visibility level of the repository (private, internal, public).
-        initialize_with_readme: Whether to initialize the repository with a README file.
+        name: The name of the project (REQUIRED).
+             This will be used as the project identifier and URL path.
+             Should be URL-safe (lowercase, alphanumeric, hyphens, underscores).
+             Examples: 'my-api', 'frontend-app', 'data-processor'
+             NOT the full namespace path - just the project name.
+        description: Optional description of the project's purpose.
+                    Shown on the project page and in search results.
+                    Examples: 'REST API for user management', 'React frontend application'
+        visibility: The visibility level of the project (OPTIONAL).
+                   PRIVATE (default) = only members can access
+                   INTERNAL = any authenticated user can access
+                   PUBLIC = anyone can access, including anonymous users
+        initialize_with_readme: Create an initial README.md file (OPTIONAL).
+                               true = create README, false (default) = empty repository
+
+    IMPORTANT: This creates a project within your personal namespace or default group.
+    To create in a specific group, use the group's project creation API instead.
+
+    Example Usage:
+        - Basic project: name='my-app', description='My application'
+        - Public project: name='open-source-lib', visibility=VisibilityLevel.PUBLIC, initialize_with_readme=True
     """
 
     name: str
@@ -26,15 +45,28 @@ class CreateRepositoryInput(BaseModel):
 
 
 class GitLabRepository(GitLabResponseBase):
-    """Response model for a GitLab repository.
+    """Response model for a GitLab project/repository.
+
+    Represents a GitLab project (which GitLab calls repositories in some contexts).
 
     Attributes:
-        id: The unique identifier of the repository.
-        name: The name of the repository.
-        path: The path of the repository.
-        description: Optional description of the repository.
-        web_url: The web URL of the repository.
-        default_branch: The default branch of the repository.
+        id: The unique numeric identifier of the project.
+           Used in API calls that require project ID.
+           Examples: 12345, 67890
+        name: The display name of the project.
+             Examples: 'My API', 'Frontend App', 'Data Processor'
+        path: The URL path identifier of the project.
+             Used in project URLs and API calls.
+             Examples: 'my-api', 'frontend-app', 'data-processor'
+        description: Optional description of the project's purpose.
+                    May be null if no description was provided.
+        web_url: The full web URL to access the project.
+                Examples: 'https://gitlab.com/user/my-project', 'https://gitlab.com/group/subgroup/project'
+        default_branch: The default branch name for the project.
+                       Usually 'main', 'master', or 'develop'.
+                       May be null for empty repositories.
+
+    Note: The full project path (namespace/project) can be extracted from web_url if needed.
     """
 
     id: int
@@ -47,6 +79,13 @@ class GitLabRepository(GitLabResponseBase):
 
 class TreeItemType(str, Enum):
     """Types of items in the repository tree.
+
+    Represents different types of objects that can exist in a Git repository tree.
+
+    Attributes:
+        TREE: Directory/folder in the repository.
+        BLOB: File in the repository.
+        COMMIT: Submodule commit reference.
 
     Attributes:
         BLOB: A file.
@@ -95,7 +134,6 @@ class RepositoryTreeItem(GitLabResponseBase):
 class RepositoryTreeResponse(BaseResponseList[RepositoryTreeItem]):
     """Response model for repository tree listing."""
 
-    pass
 
 
 class SearchProjectsInput(BaseModel):
@@ -115,4 +153,3 @@ class SearchProjectsInput(BaseModel):
 class GitLabSearchResponse(PaginatedResponse[dict[str, str | int | bool | None]]):
     """Response model for GitLab project search results."""
 
-    pass
