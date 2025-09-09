@@ -4,7 +4,7 @@ This module defines Pydantic models for GitLab search functionality.
 """
 
 from enum import Enum
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -176,6 +176,83 @@ class BlobSearchResult(SearchResult):
     ref: str
     startline: int
     project_id: int
+
+
+class IssueSearchResult(SearchResult):
+    """Issue search result model."""
+
+    id: int
+    iid: int
+    project_id: int
+    title: str
+    description: str | None = None
+    state: str
+    created_at: str
+    updated_at: str
+    web_url: str
+    author: dict[str, Any] | None = None
+    labels: list[str] = []
+    assignees: list[dict[str, Any]] = []
+
+
+class MergeRequestSearchResult(SearchResult):
+    """Merge request search result model."""
+
+    id: int
+    iid: int
+    project_id: int
+    title: str
+    description: str | None = None
+    state: str
+    created_at: str
+    updated_at: str
+    web_url: str
+    author: dict[str, Any] | None = None
+    labels: list[str] = []
+    assignees: list[dict[str, Any]] = []
+    source_branch: str | None = None
+    target_branch: str | None = None
+
+
+class CommitSearchResult(SearchResult):
+    """Commit search result model."""
+
+    id: str
+    short_id: str
+    title: str
+    message: str
+    created_at: str
+    author_name: str | None = None
+    author_email: str | None = None
+    web_url: str | None = None
+    project_id: int | None = None
+
+
+class MilestoneSearchResult(SearchResult):
+    """Milestone search result model."""
+
+    id: int
+    iid: int | None = None
+    title: str
+    description: str | None = None
+    state: str
+    created_at: str
+    updated_at: str
+    web_url: str | None = None
+    project_id: int | None = None
+    group_id: int | None = None
+
+
+class NoteSearchResult(SearchResult):
+    """Note/comment search result model."""
+
+    id: int
+    body: str
+    created_at: str
+    updated_at: str
+    author: dict[str, Any] | None = None
+    noteable_type: str | None = None
+    noteable_id: int | None = None
 
 
 class SearchResponse(BaseModel):
