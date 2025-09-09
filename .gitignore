@@ -11,3 +11,6 @@ wheels/
 
 # Configuration files with secrets
 .mcp.json
+
+# Claude Code files
+CLAUDE.md
