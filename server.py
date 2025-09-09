@@ -145,9 +145,10 @@ mcp.tool(
 )(delete_file)
 
 # Register issue tools
-mcp.tool(name="create_issue", description="Create a new issue in a GitLab repository.")(
-    create_issue
-)
+mcp.tool(
+    name="create_issue",
+    description="Create a new issue in a GitLab repository with comprehensive field support. IMPORTANT: Use epic_id or epic_iid fields to link issues to epics, NOT description text. Supports assignees, milestones, due dates, labels, weight, issue type, and confidentiality settings. Perfect for creating well-structured issues with proper epic relationships and project metadata."
+)(create_issue)
 
 mcp.tool(
     name="list_all_issues",

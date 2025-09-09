@@ -83,6 +83,10 @@ class GitLabIssue(GitLabResponseBase):
 class CreateIssueInput(BaseModel):
     """Input model for creating a new issue in a GitLab project.
 
+    Creates a new issue with comprehensive field support including epic linking,
+    milestones, due dates, assignees, and labels. IMPORTANT: Use epic_id or epic_iid
+    to link issues to epics, NOT description text.
+
     Attributes:
         project_path: The full namespace path of the project (REQUIRED).
                      Must include the complete group/subgroup path.
@@ -93,18 +97,52 @@ class CreateIssueInput(BaseModel):
         description: The detailed description of the issue (OPTIONAL).
                     Supports GitLab Flavored Markdown.
                     Example: 'Steps to reproduce:\n1. Go to login page\n2. Enter invalid credentials'
+                    IMPORTANT: Do NOT include epic links in description text.
         labels: List of label names to apply to the issue (OPTIONAL).
                Each label must exist in the project or group.
                Examples: ['bug', 'priority::high'], ['enhancement', 'frontend']
+        assignee_ids: List of user IDs to assign to the issue (OPTIONAL).
+                     Examples: [42], [123, 456] for multiple assignees
+        milestone_id: Milestone ID to associate the issue with (OPTIONAL).
+                     Use the numeric milestone ID from GitLab.
+                     Examples: 15, 42
+        due_date: Due date for the issue in YYYY-MM-DD format (OPTIONAL).
+                 Examples: '2024-12-31', '2024-03-15'
+        epic_id: Epic ID to associate issue with (OPTIONAL, GitLab Premium).
+                IMPORTANT: Use this field to link issues to epics, NOT description.
+                This is the global epic ID from the GitLab API.
+                Examples: 42, 123
+        epic_iid: Epic internal ID to associate issue with (OPTIONAL, GitLab Premium).
+                 Alternative to epic_id using the epic's internal ID within its group.
+                 Examples: 15, 7
+        weight: Issue weight for estimation (OPTIONAL, GitLab Premium).
+               Integer value for issue complexity/effort estimation.
+               Examples: 1, 3, 5, 8
+        issue_type: Type of issue to create (OPTIONAL).
+                   Values: 'issue', 'incident', 'test_case', 'task'
+                   Default: 'issue'
+        confidential: Whether the issue should be confidential (OPTIONAL).
+                     true = only project members can see, false = respects project visibility
 
     Example Usage:
-        - Create a bug report: project_path='my/project', title='Login fails', labels=['bug']
+        - Basic issue: project_path='my/project', title='Login fails', labels=['bug']
+        - Epic-linked issue: project_path='my/project', title='Auth feature', epic_id=42
+        - Complex issue: project_path='my/project', title='Feature X',
+          milestone_id=15, due_date='2024-03-31', assignee_ids=[123], weight=5
     """
 
     project_path: str
     title: str
     description: str | None = None
     labels: list[str] | None = None
+    assignee_ids: list[int] | None = None
+    milestone_id: int | None = None
+    due_date: str | None = None
+    epic_id: int | None = None
+    epic_iid: int | None = None
+    weight: int | None = None
+    issue_type: str | None = None
+    confidential: bool | None = None
 
 
 class GetIssueInput(BaseModel):

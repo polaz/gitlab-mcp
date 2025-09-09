@@ -11,6 +11,7 @@ dependencies = [
     "pydantic-settings>=2.8.1",
     "asyncio>=3.4.3",
     "python-dotenv>=1.1.0",
+    "jsonrpc>=3.0.1",
 ]
 authors = [{ name = "Adit pal Singh", email = "aditpalsing@gmail.com" }]
 license = { file = "LICENSE" }
