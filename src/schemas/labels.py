@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel
 
-from src.schemas.base import GitLabResponseBase, BaseResponseList
+from src.schemas.base import BaseResponseList, GitLabResponseBase
 
 
 class GitLabLabel(GitLabResponseBase):
