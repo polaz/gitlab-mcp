@@ -29,12 +29,12 @@ class GitLabLabel(GitLabResponseBase):
     description: str | None = None
     description_html: str | None = None
     text_color: str
-    open_issues_count: int
-    closed_issues_count: int
-    open_merge_requests_count: int
+    open_issues_count: int | None = None
+    closed_issues_count: int | None = None
+    open_merge_requests_count: int | None = None
     subscribed: bool | None = None
     priority: int | None = None
-    is_project_label: bool
+    is_project_label: bool | None = None
 
 
 class ListLabelsInput(BaseModel):
