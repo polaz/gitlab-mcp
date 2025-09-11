@@ -195,6 +195,13 @@ mcp.tool(
     name="create_work_item",
     description="""Create a new Work Item using GitLab's modern unified Work Items API (GraphQL).
 
+🎯 NATURAL LANGUAGE MAPPING EXAMPLES:
+When users ask for:
+• "create a task for backend testing" → work_item_type_id="TASK", project_path="group/backend", title="Backend testing"
+• "add a bug issue to frontend" → work_item_type_id="ISSUE", project_path="group/frontend", title="[Bug] ..."
+• "create epic for new feature" → work_item_type_id="EPIC", namespace_path="group", title="New feature epic"
+• "make a confidential task" → confidential=true, work_item_type_id="TASK"
+
 WORK ITEM TYPES & HIERARCHY:
 • EPIC: Top-level containers for organizing related work (Premium/Ultimate)
   - Can contain: ISSUE, TASK, INCIDENT, REQUIREMENT, TEST_CASE, OBJECTIVE
@@ -262,8 +269,18 @@ mcp.tool(
     name="list_work_items",
     description="""List Work Items from a project or group using GitLab's modern Work Items API (GraphQL).
 
+🎯 NATURAL LANGUAGE MAPPING EXAMPLES:
+When users ask for:
+• "show tasks from backend" → project_path="group/backend", work_item_types=["TASK"]
+• "list issues in frontend project" → project_path="group/frontend", work_item_types=["ISSUE"] 
+• "get epics from team" → namespace_path="team", work_item_types=["EPIC"]
+• "show open items" → state="OPENED" (omit work_item_types for all types)
+• "find bugs in project" → search="bug" (searches titles and descriptions)
+• "show tasks and issues" → work_item_types=["TASK", "ISSUE"]
+• "what's in the backlog" → state="OPENED", work_item_types=["ISSUE", "TASK"]
+
 SCOPE OPTIONS:
-- project_path: List work items within a specific project
+- project_path: List work items within a specific project (e.g., "mygroup/backend")
 - namespace_path: List work items within a group/namespace (includes subgroups)
 
 FILTERING CAPABILITIES:
@@ -304,6 +321,13 @@ PERFORMANCE NOTES:
 mcp.tool(
     name="get_work_item",
     description="""Get detailed information for a specific Work Item using GitLab's modern Work Items API (GraphQL).
+
+🎯 NATURAL LANGUAGE MAPPING EXAMPLES:
+When users ask for:
+• "show me issue #42" → iid=42, project_path="group/project"
+• "get details of task 123" → iid=123, project_path="group/project"
+• "inspect this work item" → id="gid://gitlab/WorkItem/456" (from previous API call)
+• "tell me about epic #5" → iid=5, project_path="group/project"
 
 IDENTIFICATION OPTIONS (choose one):
 - id: Global Work Item ID (format: gid://gitlab/WorkItem/123)
