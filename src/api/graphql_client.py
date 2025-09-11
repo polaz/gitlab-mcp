@@ -161,13 +161,52 @@ class GitLabGraphQLClient:
         """Close the transport connection."""
         await self.transport.close()
 
+    @classmethod
+    async def close_singleton(cls):
+        """Close the singleton client connection if it exists."""
+        if hasattr(cls, '_instance') and cls._instance is not None:
+            await cls._instance.close()
+            cls._instance = None
 
-# Singleton GraphQL client instance
-_graphql_client: GitLabGraphQLClient | None = None
+
+class GitLabGraphQLClientSingleton:
+    """Singleton wrapper for GitLabGraphQLClient to avoid global state."""
+
+    _instance: GitLabGraphQLClient | None = None
+
+    @classmethod
+    def initialize(cls, base_url: str | None = None, token: str | None = None) -> GitLabGraphQLClient:
+        """Initialize the singleton GraphQL client instance.
+
+        Args:
+            base_url: GitLab instance base URL (optional, uses env var if not provided)
+            token: GitLab authentication token (optional, uses env var if not provided)
+
+        Returns:
+            GitLabGraphQLClient: The initialized client
+        """
+        cls._instance = GitLabGraphQLClient(base_url, token)
+        return cls._instance
+
+    @classmethod
+    def get_instance(cls) -> GitLabGraphQLClient:
+        """Get the singleton GraphQL client instance.
+
+        Auto-initializes the client if not already initialized.
+
+        Returns:
+            GitLabGraphQLClient: The client instance
+
+        Raises:
+            GitLabAuthError: If authentication token is not available
+        """
+        if cls._instance is None:
+            cls._instance = GitLabGraphQLClient()
+        return cls._instance
 
 
 def initialize_graphql_client(base_url: str | None = None, token: str | None = None) -> GitLabGraphQLClient:
-    """Initialize the global GraphQL client instance.
+    """Initialize the GraphQL client instance.
 
     Args:
         base_url: GitLab instance base URL (optional, uses env var if not provided)
@@ -176,13 +215,11 @@ def initialize_graphql_client(base_url: str | None = None, token: str | None = N
     Returns:
         GitLabGraphQLClient: The initialized client
     """
-    global _graphql_client
-    _graphql_client = GitLabGraphQLClient(base_url, token)
-    return _graphql_client
+    return GitLabGraphQLClientSingleton.initialize(base_url, token)
 
 
 def get_graphql_client() -> GitLabGraphQLClient:
-    """Get the global GraphQL client instance.
+    """Get the GraphQL client instance.
 
     Auto-initializes the client if not already initialized.
 
@@ -192,10 +229,7 @@ def get_graphql_client() -> GitLabGraphQLClient:
     Raises:
         GitLabAuthError: If authentication token is not available
     """
-    global _graphql_client
-    if _graphql_client is None:
-        _graphql_client = GitLabGraphQLClient()
-    return _graphql_client
+    return GitLabGraphQLClientSingleton.get_instance()
 
 
 # Singleton instance for global use (like REST client) - lazy initialization
