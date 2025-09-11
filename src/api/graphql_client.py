@@ -12,6 +12,9 @@ from gql.transport.httpx import HTTPXAsyncTransport
 
 from .custom_exceptions import GitLabAPIError, GitLabAuthError, GitLabErrorType
 
+# Constants
+MAX_QUERY_LOG_LENGTH = 200
+
 
 class GitLabGraphQLClient:
     """GraphQL client for GitLab API using the gql library.
@@ -97,7 +100,7 @@ class GitLabGraphQLClient:
                     GitLabErrorType.REQUEST_FAILED,
                     {
                         "message": f"GraphQL execution failed: {error_message}",
-                        "query": query_string[:200] + "..." if len(query_string) > 200 else query_string,
+                        "query": query_string[:MAX_QUERY_LOG_LENGTH] + "..." if len(query_string) > MAX_QUERY_LOG_LENGTH else query_string,
                         "variables": variables,
                     }
                 ) from exc

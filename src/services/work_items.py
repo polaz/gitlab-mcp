@@ -629,7 +629,7 @@ async def list_work_items(input_model: ListWorkItemsInput) -> list[GitLabWorkIte
                 state_value = "closed"
             else:
                 state_value = input_model.state.value
-        
+
         variables = {
             "types": [wt.value for wt in input_model.work_item_types] if input_model.work_item_types else None,
             "state": state_value,
@@ -638,7 +638,7 @@ async def list_work_items(input_model: ListWorkItemsInput) -> list[GitLabWorkIte
             "first": input_model.first,
             "after": input_model.after,
         }
-        
+
         # Use the appropriate query and variables based on search context
         if input_model.project_path:
             variables["projectPath"] = input_model.project_path
@@ -716,7 +716,7 @@ async def create_work_item(input_model: CreateWorkItemInput) -> GitLabWorkItem:
         if input_model.confidential is not None:
             create_input["confidential"] = input_model.confidential
 
-        # Note: Widget-based operations (assignees, labels, hierarchy, etc.) 
+        # Note: Widget-based operations (assignees, labels, hierarchy, etc.)
         # are not yet implemented in this basic creation function.
         # They would require additional GraphQL mutation operations or
         # more complex input structure. Current implementation supports
@@ -781,7 +781,7 @@ async def update_work_item(input_model: UpdateWorkItemInput) -> GitLabWorkItem:
         if input_model.confidential is not None:
             update_input["confidential"] = input_model.confidential
 
-        # TODO: Add widget operations for more complex updates
+        # TODO(@dmitry): https://github.com/polaz/gitlab-mcp/issues/1 Add widget operations for more complex updates
         # This would include assignees, labels, hierarchy, etc.
 
         variables = {"input": update_input}

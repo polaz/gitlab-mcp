@@ -34,7 +34,7 @@ class WorkItemType(str, Enum):
 
 class WorkItemState(str, Enum):
     """Work Item states.
-    
+
     Note: GraphQL API inconsistency - queries expect 'opened'/'closed'
     but responses return 'OPEN'/'CLOSED'. We handle both.
     """

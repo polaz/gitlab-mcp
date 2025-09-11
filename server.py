@@ -244,7 +244,7 @@ The following features are planned for future enhancement:
 
 PLANNED WIDGET CAPABILITIES:
 - Hierarchy: Parent/child relationships between work items
-- Assignees: Users responsible for the work  
+- Assignees: Users responsible for the work
 - Labels: Categorization and filtering tags
 - Milestone: Release/sprint association
 - Iteration: Sprint/iteration assignment (Premium/Ultimate)
@@ -272,7 +272,7 @@ mcp.tool(
 🎯 NATURAL LANGUAGE MAPPING EXAMPLES:
 When users ask for:
 • "show tasks from backend" → project_path="group/backend", work_item_types=["TASK"]
-• "list issues in frontend project" → project_path="group/frontend", work_item_types=["ISSUE"] 
+• "list issues in frontend project" → project_path="group/frontend", work_item_types=["ISSUE"]
 • "get epics from team" → namespace_path="team", work_item_types=["EPIC"]
 • "show open items" → state="OPENED" (omit work_item_types for all types)
 • "find bugs in project" → search="bug" (searches titles and descriptions)
@@ -299,7 +299,7 @@ FILTERING CAPABILITIES:
 
 RETURNED INFORMATION:
 - Basic identifiers: id, iid, title, state
-- Work item type information 
+- Work item type information
 - Author details and creation/update timestamps
 - Direct web URLs for GitLab navigation
 - Pagination info for large result sets
@@ -540,14 +540,14 @@ async def search_group_wrapper(input_model: GroupSearchRequest):
 # Register search tools
 mcp.tool(
     name="search_project",
-    description="""Search within a specific GitLab project across all content types. 
+    description="""Search within a specific GitLab project across all content types.
 
 IMPORTANT: Each search call targets ONE specific scope/content type. To search multiple types, make separate calls for each scope.
 
 SUPPORTED SEARCH SCOPES (choose one per call):
 - 'projects': Project metadata (name, description, topics)
 - 'blobs': File contents within repository code
-- 'wiki_blobs': Wiki page contents and documentation  
+- 'wiki_blobs': Wiki page contents and documentation
 - 'issues': Issue titles and descriptions
 - 'merge_requests': Merge request titles and descriptions
 - 'commits': Commit messages and metadata
@@ -562,7 +562,7 @@ To search across multiple content types (e.g., both issues AND merge requests):
 
 EXAMPLE MULTI-SCOPE USAGE:
 - Call 1: search_project(project_id="my/project", scope="issues", search="authentication")
-- Call 2: search_project(project_id="my/project", scope="merge_requests", search="authentication") 
+- Call 2: search_project(project_id="my/project", scope="merge_requests", search="authentication")
 - Call 3: search_project(project_id="my/project", scope="blobs", search="authentication")
 
 REQUIREMENTS:
@@ -582,7 +582,7 @@ SUPPORTED SEARCH SCOPES (choose one per call):
 - 'blobs': File contents across all repositories (requires Premium/Ultimate)
 - 'wiki_blobs': Wiki page contents across all project wikis
 - 'issues': Issue titles and descriptions across all projects
-- 'merge_requests': Merge request titles and descriptions across all projects  
+- 'merge_requests': Merge request titles and descriptions across all projects
 - 'commits': Commit messages and metadata across all repositories
 - 'milestones': Milestone titles and descriptions across all projects
 - 'notes': Comments on issues and merge requests across all projects
@@ -590,7 +590,7 @@ SUPPORTED SEARCH SCOPES (choose one per call):
 MULTI-TYPE SEARCH STRATEGY:
 To search across multiple content types globally (e.g., issues AND merge requests across all projects):
 1. Make separate search_globally calls for each scope
-2. Use same search term with different scope parameters  
+2. Use same search term with different scope parameters
 3. Combine results programmatically for comprehensive coverage
 
 EXAMPLE MULTI-SCOPE USAGE:
@@ -621,7 +621,7 @@ IMPORTANT: Each search call targets ONE specific scope/content type. To search m
 
 SUPPORTED SEARCH SCOPES (choose one per call):
 - 'projects': Project metadata within the group and subgroups
-- 'blobs': File contents within group repositories  
+- 'blobs': File contents within group repositories
 - 'wiki_blobs': Wiki page contents within group projects
 - 'issues': Issue titles and descriptions within group projects
 - 'merge_requests': Merge request titles and descriptions within group projects
@@ -648,7 +648,7 @@ SCOPE BENEFITS:
 
 REQUIREMENTS:
 - group_id: Group path (e.g., 'my-team') or numeric ID
-- scope: Single content type from list above  
+- scope: Single content type from list above
 - search: Search term (minimum 3 characters, no wildcards like '*')
 
 PERFORMANCE NOTES:
