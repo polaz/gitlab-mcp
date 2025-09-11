@@ -6,14 +6,19 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "dotenv>=0.9.9",
-    "mcp[cli]>=1.6.0",
+    "mcp[cli]>=1.13.1",
     "pydantic>=2.11.3",
     "pydantic-settings>=2.8.1",
     "asyncio>=3.4.3",
     "python-dotenv>=1.1.0",
     "jsonrpc>=3.0.1",
+    "httpx>=0.25.0",
+    "gql[httpx]>=4.0.0",
 ]
-authors = [{ name = "Adit pal Singh", email = "aditpalsing@gmail.com" }]
+authors = [
+    { name = "Adit pal Singh", email = "aditpalsing@gmail.com" },
+    { name = "Dmitry Prudnikov", email = "mail@polaz.com" }
+]
 license = { file = "LICENSE" }
 classifiers = [
     "Programming Language :: Python :: 3.13",
@@ -26,8 +31,8 @@ classifiers = [
 keywords = ["gitlab", "mcp", "ai", "server"]
 
 [project.urls]
-Homepage = "https://github.com/Adit-999/gitlab-mcp"
-Documentation = "https://github.com/Adit-999/gitlab-mcp#readme"
+Homepage = "https://github.com/polaz/gitlab-mcp"
+Documentation = "https://github.com/polaz/gitlab-mcp#readme"
 
 [project.optional-dependencies]
 dev = [

@@ -1,6 +1,6 @@
 # GitLab MCP Server
 
-A MCP (Model Context Protocol) server for interacting with GitLab API. This server provides a set of tools that allow AI clients to perform operations on GitLab repositories, issues, merge requests, and more. All operations support both synchronous and asynchronous execution patterns.
+A MCP (Model Context Protocol) server for interacting with GitLab API using the modern Work Items GraphQL API. This server provides comprehensive tools for managing GitLab work items (epics, issues, tasks), repositories, merge requests, and more with enhanced agentic support.
 
 ## Installation
 
@@ -8,7 +8,7 @@ A MCP (Model Context Protocol) server for interacting with GitLab API. This serv
 
 ```bash
 # Clone the repository
-git clone https://github.com/Adit-999/gitlab-mcp.git
+git clone https://github.com/polaz/gitlab-mcp.git
 cd gitlab-mcp
 
 # Install dependencies using uv
@@ -19,7 +19,7 @@ uv sync
 
 ```bash
 # Clone the repository
-git clone https://github.com/Adit-999/gitlab-mcp.git
+git clone https://github.com/polaz/gitlab-mcp.git
 cd gitlab-mcp
 
 # Create and activate a virtual environment
@@ -32,14 +32,24 @@ pip install -e .
 
 ## Configuration
 
-The GitLab MCP server requires two environment variables to function properly:
+The GitLab MCP server requires environment variables for configuration:
 
-1. `GITLAB_PERSONAL_ACCESS_TOKEN` - For authentication with GitLab API
-2. `GITLAB_API_URL` - The base URL for the GitLab API
+### Required Variables
+
+1. `GITLAB_PERSONAL_ACCESS_TOKEN` - For authentication with GitLab API (both REST and GraphQL)
+2. `GITLAB_API_URL` - The base URL for the GitLab API (automatically used for both `/api/v4` REST and `/api/graphql` GraphQL endpoints)
+
 
 ### Option 1: Environment Variables
 
-Create a `.env` file in the project root directory with these variables:
+Copy `.env.example` to `.env` and update with your values:
+
+```bash
+cp .env.example .env
+# Edit .env with your configuration
+```
+
+Example `.env` file:
 
 ```
 GITLAB_PERSONAL_ACCESS_TOKEN=your_personal_access_token
@@ -55,7 +65,8 @@ You can also configure the MCP server in your MCP JSON configuration file:
   "mcpServers": {
     "gitlab-mcp": {
       "command": "uv",
-      "args": ["run", "--with", "mcp[cli]", "mcp", "run", "/path/to/gitlab-mcp/server.py"],
+      "args": ["run", "--with", "mcp[cli],gql", "mcp", "run", "/path/to/gitlab-mcp/server.py"],
+      "cwd": "/path/to/gitlab-mcp",
       "env": {
         "GITLAB_PERSONAL_ACCESS_TOKEN": "your_personal_access_token",
         "GITLAB_API_URL": "https://gitlab.com"
@@ -79,32 +90,29 @@ gitlab-mcp/
 ├── src/                           # Source code
 │   ├── api/                       # API interaction layer
 │   │   ├── rest_client.py         # GitLab REST API client
+│   │   ├── graphql_client.py      # GitLab GraphQL API client (Work Items)
 │   │   ├── exceptions.py          # API exception definitions
 │   ├── schemas/                   # Data models and validation
 │   │   ├── base.py                # Base schema classes
 │   │   ├── repositories.py        # Repository data models
 │   │   ├── branches.py            # Branch data models
-│   │   ├── issues.py              # Issue data models
+│   │   ├── work_items.py          # Work Items data models (GraphQL)
 │   │   ├── merge_requests.py      # Merge request data models
+│   │   ├── milestones.py          # Milestone data models (UX optimized)
+│   │   ├── iterations.py          # Iteration data models
 │   │   ├── groups.py              # Group data models
 │   │   ├── labels.py              # Label data models
-│   │   └── search.py              # Search data models
+│   │   └── search.py              # Search data models (enhanced with contextual fields)
 │   ├── services/                  # Business logic layer
 │   │   ├── repositories.py        # Repository operations
 │   │   ├── branches.py            # Branch operations
-│   │   ├── issues.py              # Issue operations
+│   │   ├── work_items.py          # Work Items operations (GraphQL)
 │   │   ├── merge_requests.py      # Merge request operations
+│   │   ├── milestones.py          # Milestone operations
+│   │   ├── iterations.py          # Iteration operations
 │   │   ├── groups.py              # Group operations
 │   │   ├── labels.py              # Label operations
 │   │   └── search.py              # Search operations
-│   └── tools/                     # MCP tool implementations
-│       ├── repositories.py        # Repository tools
-│       ├── branches.py            # Branch tools
-│       ├── issues.py              # Issue tools
-│       ├── merge_requests.py      # Merge request tools
-│       ├── groups.py              # Group tools
-│       ├── labels.py              # Label tools
-│       └── search.py              # Search tools
 ├── server.py                      # Main MCP server entry point
 ```
 
@@ -143,17 +151,6 @@ The server provides the following tools for interacting with GitLab:
 - `update_file`: Update an existing file in a GitLab repository
 - `delete_file`: Delete a file from a GitLab repository
 
-### Issue Management
-
-- `create_issue`: Create a new issue in a GitLab repository
-- `list_all_issues`: List issues globally or from a specific project with optional label filtering
-- `get_issue`: Get details for a specific GitLab issue
-- `update_issue`: Update an existing issue with comprehensive field support including assignees, labels, state, milestones, and metadata
-- `close_issue`: Close a GitLab issue
-- `delete_issue`: Delete an issue from a GitLab repository
-- `move_issue`: Move an issue to a different project
-- `comment_on_issue`: Add a comment to a GitLab issue
-- `list_issue_comments`: List comments for a GitLab issue
 
 ### Merge Request Operations
 
@@ -178,21 +175,43 @@ The server provides the following tools for interacting with GitLab:
 
 ### Search Tools
 
-- `search_globally`: Search for projects, file contents (blobs), and wiki content across all accessible GitLab instances. Does NOT search issues or merge requests.
-- `search_project`: Search for file contents (blobs), wiki content, and project metadata within a specific project. Does NOT search issues or merge requests.
-- `search_group`: Search for projects, file contents (blobs), and wiki content within a specific group. Does NOT search issues or merge requests.
+- `search_globally`: Search across ALL GitLab content you have access to, supporting multiple scopes: 'projects' (metadata), 'blobs' (file contents), 'wiki_blobs' (wiki pages), 'issues' (titles/descriptions), 'merge_requests' (titles/descriptions), 'commits' (messages/content), 'milestones', and 'notes' (comments). Enhanced with additional contextual fields including project namespaces, group information, labels, assignees, and other valuable metadata.
+- `search_project`: Search within a specific GitLab project across all content types. Supports all scopes mentioned above and perfect for finding specific content within a project. Enhanced with detailed context information.
+- `search_group`: Search within a specific GitLab group and its projects/subgroups across all content types. More focused than global search with faster results and comprehensive contextual fields.
 
-### Epic Operations (Premium/Ultimate)
 
-- `create_epic`: Create a new epic in a GitLab group with support for title, description, labels, dates, hierarchy, and visual organization
-- `list_epics`: List epics in a GitLab group with comprehensive filtering by state, labels, author, search terms, and date ranges
-- `get_epic`: Get detailed information for a specific epic including all metadata, relationships, and visual settings
-- `update_epic`: Update an existing epic with comprehensive field support including state changes and advanced label management
-- `delete_epic`: Permanently delete an epic from a GitLab group (removes all epic-issue associations)
-- `list_epic_issues`: List all issues currently assigned to a specific epic with association metadata
-- `assign_issue_to_epic`: Assign an issue to an epic, creating a relationship between them (reassigns if previously associated)
-- `remove_issue_from_epic`: Remove an issue from an epic, breaking their association while keeping the issue in its project
-- `update_epic_issue_association`: Update the position/order of an issue within an epic's issue list for prioritization
+### Work Items Operations (Modern GraphQL API) ⭐
+
+**🚀 PRIMARY API**: GitLab's unified Work Items API replaces deprecated epic/issue REST endpoints with enhanced functionality and comprehensive agentic support.
+
+- **`create_work_item`**: Create epics, issues, tasks, objectives, incidents, test cases, and requirements with comprehensive hierarchy documentation and widget support explanations for effective agentic planning.
+
+- **`list_work_items`**: Advanced filtering by type, state, search terms with project/group scope support. Comprehensive pagination and performance guidance for optimal agentic workflow management.
+
+- **`get_work_item`**: Complete work item retrieval with all 19 widget types (assignees, hierarchy, labels, milestones, iterations, dates, descriptions, progress, health status, weight, and more). Supports both global ID and IID+project access methods.
+
+- **`update_work_item`**: Title, confidential flag, and state management (open/close) with comprehensive documentation of widget-based architecture for future enhancements.
+
+- **`delete_work_item`**: Permanent deletion with comprehensive safety warnings, verification procedures, and detailed impact documentation by work item type for responsible agentic operations.
+
+**✅ VERIFIED**: All functions thoroughly tested against live GitLab API.
+
+### Milestone Operations
+
+- `create_milestone`: Create a new milestone in a GitLab project or group for organizing issues and merge requests by releases, sprints, or goals
+- `list_milestones`: List milestones in a GitLab project or group with filtering by state and search terms for project planning
+- `get_milestone`: Get detailed information for a specific milestone including dates, state, and associated metadata
+- `update_milestone`: Update an existing milestone in GitLab including title, description, dates, and state changes
+- `delete_milestone`: Permanently delete a milestone from a GitLab project or group
+
+### Iteration Operations (Premium/Ultimate)
+
+**Note**: Individual iteration creation via REST API is not supported by GitLab. Iterations are managed through iteration cadences (automated scheduling) in the GitLab UI or via GraphQL Work Items API.
+
+- `list_iterations`: List iterations in a GitLab group with filtering by state and search terms for agile project management
+- `get_iteration`: Get detailed information for a specific iteration including dates, state, and sequence number
+- `update_iteration`: Update an existing iteration in GitLab including title, description, dates, and state changes
+- `delete_iteration`: Permanently delete an iteration from a GitLab group
 
 ### Label Operations
 
@@ -204,51 +223,46 @@ The server provides the following tools for interacting with GitLab:
 - `subscribe_to_label`: Subscribe to a GitLab project label
 - `unsubscribe_from_label`: Unsubscribe from a GitLab project label
 
-## Project Enhancements
+## Breaking Changes from Upstream
 
-This fork includes several improvements and fixes beyond the original repository:
+This project has been completely refactored from the original repository with significant breaking changes:
 
-### Epic Management System (Premium/Ultimate)
-- **Complete epic CRUD operations**: Full support for creating, reading, updating, and deleting epics at group level with comprehensive field support
-- **Epic-issue relationships**: Assign, remove, and reorder issues within epics for project organization and planning
-- **Advanced epic filtering**: Filter epics by state, labels, author, search terms, date ranges, and hierarchy options
-- **Epic hierarchy support**: Create parent-child epic relationships for multi-level project organization
-- **Visual organization**: Support for epic colors and visual settings for better project management
-- **Comprehensive metadata**: Full support for epic dates, confidentiality, labels, and custom fields
+### 🔥 **BREAKING CHANGE: Deprecated REST API Removal**
+- **Removed**: All deprecated REST API epic and issue tools
+- **Replaced**: Modern unified Work Items GraphQL API 
+- **Impact**: Any code using `create_epic`, `list_epics`, `get_epic`, `update_epic`, `delete_epic`, `create_issue`, `list_issues`, `get_issue`, `update_issue`, `delete_issue` must migrate to Work Items API
+- **Migration**: Use `create_work_item`, `list_work_items`, `get_work_item`, `update_work_item`, `delete_work_item` instead
 
-### Label Management System
-- **Complete label CRUD operations**: Full support for creating, reading, updating, and deleting labels at both project and group levels
-- **Label subscriptions**: Subscribe/unsubscribe functionality for project labels
-- **Enhanced issue filtering**: Added label filtering capability to `list_all_issues` for improved issue organization
+### 🔥 **BREAKING CHANGE: GraphQL API Requirement**
+- **Added Dependency**: `gql` library required for Work Items functionality
+- **Configuration**: Must include `gql` in MCP server configuration: `--with mcp[cli],gql`
+- **Impact**: Existing installations must update dependencies and configuration
 
-### Issues API Enhancement  
-- **Flexible issue querying**: Enhanced `list_all_issues` to support both global (`/issues`) and project-specific (`/projects/{id}/issues`) endpoints
-- **Optional project scoping**: Made project_path parameter optional to enable cross-project issue searches
-- **Label-based filtering**: Verified label filtering works correctly with project-specific queries (e.g., area::ux labels)
-- **Comprehensive issue updates**: Added `update_issue` function with full GitLab API support for assignees, labels, milestones, epic linking, and metadata
+### 🚀 **Current Project Status**
 
-### API Compatibility & Error Handling
-- **GitLab API 18.3/18.4 compatibility**: Updated schemas and API calls to work with latest GitLab versions
-- **Improved error handling**: Fixed recursive error wrapping in group operations that was creating confusing nested error messages
-- **Parameter validation**: Enhanced parameter handling to prevent invalid API calls (e.g., null state values)
+**✅ Production Ready Features:**
+- **Work Items API**: Complete GraphQL implementation with comprehensive agentic descriptions
+- **Repository Management**: Full CRUD operations for repositories and file management
+- **Branch Operations**: Complete branch lifecycle management
+- **Merge Requests**: Full merge request workflow support
+- **Search Functionality**: Enhanced search with contextual fields across all content types
+- **Milestone Management**: Complete milestone lifecycle with UX-optimized schemas
+- **Label Operations**: Full label CRUD with subscription management
+- **Iteration Support**: Premium/Ultimate tier iteration management
 
-### Schema & Type Safety
-- **Modern Python 3.13 support**: Updated generic type syntax from `Generic[T]` to modern `[T]` syntax
-- **Flexible data models**: Made optional fields truly optional in GitLabLabel schema to handle API response variations
-- **Better validation**: Improved Pydantic schema validation for edge cases
+**✅ Verified & Tested:**
+- All Work Items functions verified against live GitLab API
+- GraphQL schema compatibility confirmed with GitLab 18.3+
+- Error handling and edge cases thoroughly tested
+- State management and field conversions working correctly
 
-### Code Quality & Architecture
-- **Fixed parameter naming**: Corrected `data` vs `json_data` parameter mismatches in REST client calls
-- **Environment loading**: Added proper .env file loading for configuration management
-- **Comprehensive testing**: All label functions verified against live GitLab API
-- **Python version flexibility**: Supports both Python 3.12 and 3.13 with proper virtual environment management
-- **Clarified tool limitations**: Enhanced search tool descriptions to prevent misuse (e.g., searching for issues when tools only support projects/blobs)
+**🏗️ Architecture:**
+- **Domain-driven structure**: Modular organization by GitLab entities
+- **Dual API support**: REST and GraphQL for comprehensive coverage
+- **Type safety**: Full Pydantic validation with Python 3.13+ support
+- **Enhanced UX**: Optimized field ordering for Claude Code compatibility
+- **Comprehensive error handling**: Meaningful error messages and proper exception management
 
-### Bug Fixes
-- Fixed syntax errors in base schema classes
-- Resolved POST/PUT request parameter naming inconsistencies
-- Corrected subscribe/unsubscribe functions missing required parameters
-- Fixed group label fetching errors due to schema mismatches
 
 ## Troubleshooting
 
@@ -256,6 +270,11 @@ This fork includes several improvements and fixes beyond the original repository
 
 - **GitLab API Authentication Errors**: Ensure your `GITLAB_PERSONAL_ACCESS_TOKEN` has the necessary permissions and is correctly set in your environment variables.
 - **NoneType errors**: Some functions may encounter issues when handling empty results. If you encounter these errors, please report them with detailed steps to reproduce.
+
+## Authors
+
+- **Adit pal Singh** - Original author
+- **Dmitry Prudnikov** - Work Items API implementation, GraphQL migration, and comprehensive enhancements
 
 ## License
 
