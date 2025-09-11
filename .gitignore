@@ -16,3 +16,4 @@ wheels/
 # Claude Code files
 CLAUDE.md
 work.md
+.github/copilot-instructions.md
