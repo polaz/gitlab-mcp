@@ -4,7 +4,17 @@ A MCP (Model Context Protocol) server for interacting with GitLab API using the 
 
 ## Installation
 
-### Using uv (Recommended)
+### Quick Start (No Installation Required)
+
+**Requirements:** Only [uv](https://docs.astral.sh/uv/getting-started/installation/) package manager
+
+Run directly from GitHub without cloning or installing:
+
+```bash
+uv run --python 3.13 --with git+https://github.com/polaz/gitlab-mcp.git python -m gitlab_mcp
+```
+
+### Using uv (Local Development)
 
 ```bash
 # Clone the repository
@@ -56,17 +66,16 @@ GITLAB_PERSONAL_ACCESS_TOKEN=your_personal_access_token
 GITLAB_API_URL=https://gitlab.com
 ```
 
-### Option 2: MCP Configuration
+### Option 2: MCP Client Configuration (Recommended)
 
-You can also configure the MCP server in your MCP JSON configuration file:
+Add to your MCP client configuration (e.g., Claude Desktop `claude_desktop_config.json`):
 
 ```json
 {
   "mcpServers": {
     "gitlab-mcp": {
       "command": "uv",
-      "args": ["run", "--with", "mcp[cli],gql", "mcp", "run", "/path/to/gitlab-mcp/server.py"],
-      "cwd": "/path/to/gitlab-mcp",
+      "args": ["run", "--python", "3.13", "--with", "git+https://github.com/polaz/gitlab-mcp.git", "python", "-m", "gitlab_mcp"],
       "env": {
         "GITLAB_PERSONAL_ACCESS_TOKEN": "your_personal_access_token",
         "GITLAB_API_URL": "https://gitlab.com"
@@ -76,11 +85,7 @@ You can also configure the MCP server in your MCP JSON configuration file:
 }
 ```
 
-### Configure with uv for Claude Desktop
-
-```bash
-uv run mcp install server.py
-```
+**Requirements:** Only [uv](https://docs.astral.sh/uv/getting-started/installation/) package manager - no cloning or installation needed!
 ## Project Structure
 
 The project follows a modular, domain-driven architecture:
