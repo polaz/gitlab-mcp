@@ -12,23 +12,15 @@ License: MIT
 
 import asyncio
 import os
+import sys
 import threading
-from pathlib import Path
 
 # Load environment variables from .env file
 try:
     from dotenv import load_dotenv
     load_dotenv()
 except ImportError:
-    # Fallback manual loading if python-dotenv not available
-    env_file = Path(__file__).parent / ".env"
-    if env_file.exists():
-        with env_file.open() as f:
-            for line_content in f:
-                line = line_content.strip()
-                if line and not line.startswith('#') and '=' in line:
-                    key, value = line.split('=', 1)
-                    os.environ[key] = value
+    pass  # Continue without .env loading if dotenv not available
 
 from mcp.server.fastmcp import FastMCP
 
@@ -772,6 +764,32 @@ PERFORMANCE NOTES:
 
 def main():
     """Main entry point for the GitLab MCP server."""
+
+    # Check required environment variables
+    api_url = os.getenv("GITLAB_API_URL")
+    token = os.getenv("GITLAB_PERSONAL_ACCESS_TOKEN")
+
+    # Debug: Show what we got
+    print(f"Debug: Checking environment variables - API_URL: '{api_url}', TOKEN length: {len(token) if token else 0}", file=sys.stderr)
+
+    if not token:
+        print("Error: GITLAB_PERSONAL_ACCESS_TOKEN environment variable is required.", file=sys.stderr)
+        if api_url:
+            print(f"Debug: GITLAB_API_URL is set to: {api_url}", file=sys.stderr)
+        else:
+            print("Debug: GITLAB_API_URL is not set.", file=sys.stderr)
+        print("Please set the required environment variables and try again.", file=sys.stderr)
+        sys.exit(1)
+
+    if not api_url:
+        print("Error: GITLAB_API_URL environment variable is required.", file=sys.stderr)
+        print(f"Debug: GITLAB_PERSONAL_ACCESS_TOKEN is set (length: {len(token)} chars)", file=sys.stderr)
+        print("Please set the required environment variables and try again.", file=sys.stderr)
+        sys.exit(1)
+
+    # Debug output for API URL (always show for debugging)
+    print(f"Debug: Using GitLab API URL: {api_url}", file=sys.stderr)
+
     mcp.run(transport="stdio")
 
 

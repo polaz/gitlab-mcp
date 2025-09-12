@@ -5,7 +5,7 @@ This package provides comprehensive tools for interacting with GitLab through
 the modern Work Items GraphQL API and traditional REST endpoints.
 """
 
-__version__ = "0.3.1"
+__version__ = "0.3.2"
 __author__ = "Adit pal Singh, Dmitry Prudnikov"
 __email__ = "mail@polaz.com"
 
