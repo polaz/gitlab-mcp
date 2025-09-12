@@ -12,6 +12,10 @@ wheels/
 # Configuration files with secrets
 .mcp.json
 .env
+.env.*
+.env.backup
+.env.bak
+.env.test.bak
 
 # Claude Code files
 CLAUDE.md
