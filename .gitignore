@@ -17,6 +17,9 @@ wheels/
 .env.bak
 .env.test.bak
 
+# Log files
+*.log
+
 # Claude Code files
 CLAUDE.md
 work.md
