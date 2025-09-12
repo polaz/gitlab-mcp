@@ -17,6 +17,36 @@ class GetFileContentsInput(BaseModel):
     ref: str | None = None
 
 
+class GetFileRawInput(BaseModel):
+    """Input model for retrieving raw file contents from a GitLab repository.
+
+    Attributes:
+        project_path: The path of the project (e.g., 'namespace/project').
+        file_path: The path of the file within the repository.
+        ref: The reference (branch, tag, or commit) to get the file from.
+    """
+
+    project_path: str
+    file_path: str
+    ref: str | None = None
+
+
+class GetFileTreeInput(BaseModel):
+    """Input model for retrieving file tree from a GitLab repository.
+
+    Attributes:
+        project_path: The path of the project (e.g., 'namespace/project').
+        path: The path within the repository to get the tree from.
+        ref: The reference (branch, tag, or commit) to get the tree from.
+        recursive: Whether to retrieve the tree recursively.
+    """
+
+    project_path: str
+    path: str | None = None
+    ref: str | None = None
+    recursive: bool = False
+
+
 class GitLabContent(GitLabResponseBase):
     """Response model for file contents from a GitLab repository.
 

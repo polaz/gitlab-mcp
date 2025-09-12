@@ -10,7 +10,6 @@ from src.schemas.branches import (
     DeleteMergedBranchesInput,
     GetBranchInput,
     GetDefaultBranchRefInput,
-    GitLabBranchList,
     GitLabReference,
     ListBranchesInput,
     ProtectBranchInput,
@@ -25,7 +24,7 @@ async def create_branch(input_model: CreateBranchInput) -> GitLabReference:
         input_model: The input model containing project path, branch name, and ref.
 
     Returns:
-        GitLabReference: The created branch details.
+        GitLabReference: The created branch details as a structured Pydantic model.
 
     Raises:
         GitLabAPIError: If the branch creation operation fails.
@@ -104,14 +103,14 @@ async def get_default_branch_ref(input_model: GetDefaultBranchRefInput) -> str:
         ) from exc
 
 
-async def list_branches(input_model: ListBranchesInput) -> GitLabBranchList:
+async def list_branches(input_model: ListBranchesInput) -> list[GitLabReference]:
     """List branches in a GitLab repository.
 
     Args:
         input_model: The input model containing project path and optional search pattern.
 
     Returns:
-        GitLabBranchList: List of branches in the repository.
+        list[GitLabReference]: List of branches as structured Pydantic models.
 
     Raises:
         GitLabAPIError: If listing branches fails.
@@ -122,14 +121,17 @@ async def list_branches(input_model: ListBranchesInput) -> GitLabBranchList:
         )
         endpoint = f"/projects/{project_path}/repository/branches"
 
-        params = {}
+        params = {
+            "page": input_model.page,
+            "per_page": input_model.per_page
+        }
         if input_model.search:
             params["search"] = input_model.search
 
         data = await gitlab_rest_client.get_async(endpoint, params=params)
 
         branches = [GitLabReference(**branch) for branch in data]
-        return GitLabBranchList(items=branches)
+        return branches
     except GitLabAPIError as exc:
         raise GitLabAPIError(
             GitLabErrorType.REQUEST_FAILED,

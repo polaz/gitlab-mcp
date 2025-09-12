@@ -5,37 +5,6 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 
-class CreateIterationInput(BaseModel):
-    """Input model for creating a new iteration in a GitLab group.
-
-    Creates a new iteration within a group for organizing work in time-boxed periods.
-    Iterations are available in GitLab Premium/Ultimate.
-
-    Attributes:
-        group_id: The numeric ID OR path of the group (REQUIRED).
-                 Examples: '42', 'my-group', 'parent-group/subgroup'
-        title: The title of the iteration (REQUIRED).
-               Should be descriptive and concise.
-               Examples: 'Sprint 15', 'Q1 Iteration 3', 'Release 2.1'
-        description: Detailed description of the iteration (OPTIONAL).
-                    Supports GitLab Flavored Markdown.
-                    Examples: 'Sprint focused on authentication improvements'
-        start_date: Start date for the iteration in YYYY-MM-DD format (REQUIRED).
-                   Examples: '2024-01-01', '2024-03-01'
-        due_date: Due date for the iteration in YYYY-MM-DD format (REQUIRED).
-                 Examples: '2024-01-14', '2024-03-15'
-
-    Example Usage:
-        - Create iteration: group_id='my-team', title='Sprint 15', start_date='2024-01-01', due_date='2024-01-14'
-    """
-
-    group_id: str = Field(description="The numeric ID or path of the group")
-    title: str = Field(description="The title of the iteration")
-    description: str | None = Field(None, description="The description of the iteration")
-    start_date: str = Field(description="Start date (YYYY-MM-DD format)")
-    due_date: str = Field(description="Due date (YYYY-MM-DD format)")
-
-
 class UpdateIterationInput(BaseModel):
     """Input model for updating an existing iteration in GitLab.
 
@@ -139,7 +108,7 @@ class GitLabIteration(BaseModel):
     iid: int = Field(description="Iteration internal ID")
     sequence: int = Field(description="Iteration sequence number")
     group_id: int = Field(description="Group ID")
-    title: str = Field(description="Iteration title")
+    title: str | None = Field(description="Iteration title (null for auto-scheduled iterations)")
     description: str | None = Field(None, description="Iteration description")
     state: int = Field(description="Iteration state (1=upcoming, 2=started, 3=closed)")
     created_at: datetime = Field(description="Creation timestamp")

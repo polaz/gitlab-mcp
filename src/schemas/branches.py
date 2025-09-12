@@ -112,10 +112,14 @@ class ListBranchesInput(BaseModel):
     Attributes:
         project_path: The path of the project (e.g., 'namespace/project').
         search: Optional search pattern for branch names.
+        page: Page number for pagination (default: 1).
+        per_page: Number of items per page (default: 20).
     """
 
     project_path: str
     search: str | None = None
+    page: int = 1
+    per_page: int = 20
 
 
 class DeleteBranchInput(BaseModel):

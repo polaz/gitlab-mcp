@@ -10,7 +10,9 @@ Authors:
 License: MIT
 """
 
+import asyncio
 import os
+import threading
 from pathlib import Path
 
 # Load environment variables from .env file
@@ -67,6 +69,7 @@ from src.services.merge_requests import (
 )
 from src.services.repositories import create_repository, list_repository_tree
 from src.services.search import search_globally, search_group, search_project
+from src.services.work_item_types import initialize_work_item_types
 from src.services.work_items import (
     create_work_item,
     delete_work_item,
@@ -77,6 +80,29 @@ from src.services.work_items import (
 
 # Create the MCP server
 mcp = FastMCP("Gitlab", instructions="Use the tools to interact with GitLab.")
+
+# Initialize work item types on server startup
+async def init_server():
+    """Initialize server components during startup."""
+    try:
+        type_mappings = await initialize_work_item_types()
+        print(f"✅ Initialized {len(type_mappings)} work item types")
+    except Exception as e:
+        print(f"⚠️ Work item type initialization failed: {e}. Using fallback types.")
+
+# Initialize server startup hook
+def run_init():
+    """Run async initialization in a new event loop."""
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        loop.run_until_complete(init_server())
+    finally:
+        loop.close()
+
+# Run initialization in background thread to avoid blocking
+init_thread = threading.Thread(target=run_init, daemon=True)
+init_thread.start()
 
 # Register repository tools
 
@@ -202,34 +228,55 @@ When users ask for:
 • "create epic for new feature" → work_item_type_id="EPIC", namespace_path="group", title="New feature epic"
 • "make a confidential task" → confidential=true, work_item_type_id="TASK"
 
-WORK ITEM TYPES & HIERARCHY:
+AVAILABLE WORK ITEM TYPES (dynamically discovered):
+⚡ The server automatically detects which work item types are available in your GitLab instance.
+   Common types include ISSUE, EPIC, TASK, INCIDENT, TEST_CASE, REQUIREMENT, OBJECTIVE, KEY_RESULT, TICKET.
+
+🔗 TYPE HIERARCHY & RELATIONSHIPS:
 • EPIC: Top-level containers for organizing related work (Premium/Ultimate)
   - Can contain: ISSUE, TASK, INCIDENT, REQUIREMENT, TEST_CASE, OBJECTIVE
   - Use for: Major features, initiatives, product areas
+  - Type names: "EPIC" (case-insensitive)
+  - **SCOPE**: ALWAYS group-level only - use namespace_path, never project_path
 • ISSUE: Standard work items for bugs, features, and user stories
   - Can contain: TASK, TEST_CASE, REQUIREMENT
   - Use for: Individual features, bug reports, user stories
+  - Type names: "ISSUE" (case-insensitive)
 • TASK: Granular work items that break down issues
   - Cannot contain other items (leaf nodes)
   - Use for: Implementation steps, subtasks, checklist items
+  - Type names: "TASK" (case-insensitive)
 • OBJECTIVE: High-level business goals (OKR system)
   - Can contain: KEY_RESULT
   - Use for: Business objectives, quarterly goals
+  - Type names: "OBJECTIVE" (case-insensitive)
 • KEY_RESULT: Measurable outcomes for objectives
   - Cannot contain other items
   - Use for: Metrics, KPIs, measurable targets
+  - Type names: "KEY_RESULT", "KEY RESULT" (handles both formats)
 • INCIDENT: Service disruption tracking
   - Can contain: TASK
   - Use for: Production issues, outages, service problems
+  - Type names: "INCIDENT" (case-insensitive)
 • TEST_CASE: Quality assurance work items
   - Cannot contain other items
   - Use for: Test scenarios, QA verification steps
+  - Type names: "TEST_CASE", "TEST CASE" (handles both formats)
 • REQUIREMENT: Product/business requirements
   - Can contain: TEST_CASE, TASK
   - Use for: Specifications, acceptance criteria
+  - Type names: "REQUIREMENT" (case-insensitive)
+• TICKET: General purpose work items
+  - Similar to ISSUE but for different organizational contexts
+  - Type names: "TICKET" (case-insensitive)
 
 REQUIRED FIELDS:
-- work_item_type_id: Specific to each GitLab instance (get from Work Item types API)
+- work_item_type_id: Work item type identifier - can be either:
+  * Type NAME (e.g., "ISSUE", "TASK", "EPIC") - automatically resolved via dynamic discovery
+  * Global ID (e.g., "gid://gitlab/WorkItems::Type/2") - direct GitLab identifier
+
+⚡ DYNAMIC TYPE DISCOVERY: The server automatically discovers available work item types from your GitLab instance on startup, eliminating the need for hardcoded type mappings.
+
 - title: Descriptive title for the work item
 - project_path OR namespace_path: Context location
 
@@ -246,6 +293,9 @@ PLANNED WIDGET CAPABILITIES:
 - Hierarchy: Parent/child relationships between work items
 - Assignees: Users responsible for the work
 - Labels: Categorization and filtering tags
+  ⚠️ IMPORTANT: Agents should ONLY use labels that already exist in the project/group scope.
+  Use list_labels or search functions to discover existing labels before assigning them.
+  Creating new labels should be done explicitly through separate label management functions after user approval.
 - Milestone: Release/sprint association
 - Iteration: Sprint/iteration assignment (Premium/Ultimate)
 - Health Status: On track/needs attention/at risk
@@ -267,7 +317,18 @@ COMMON USAGE PATTERNS:
 
 mcp.tool(
     name="list_work_items",
-    description="""List Work Items from a project or group using GitLab's modern Work Items API (GraphQL).
+    description="""⚡ USE THIS TO LIST ALL ISSUES/TASKS/EPICS IN A PROJECT WITHOUT REQUIRING SEARCH TERMS
+
+List Work Items from a project or group using GitLab's modern Work Items API (GraphQL).
+Unlike search tools, this can retrieve ALL work items without any search query required.
+
+🎯 CRITICAL USAGE PATTERNS:
+✅ "find all issues in project X" → list_work_items(project_path="X")
+✅ "show open bugs in project Y" → list_work_items(project_path="Y", search="bug", state="OPENED")
+✅ "list tasks in backend" → list_work_items(project_path="group/backend", work_item_types=["TASK"])
+✅ "get epics from team" → list_work_items(namespace_path="team", work_item_types=["EPIC"])
+✅ "what's in the backlog" → list_work_items(state="OPENED", work_item_types=["ISSUE", "TASK"])
+❌ "find all issues in project X" → search_project() [WRONG - requires search term]
 
 🎯 NATURAL LANGUAGE MAPPING EXAMPLES:
 When users ask for:
@@ -284,9 +345,13 @@ SCOPE OPTIONS:
 - namespace_path: List work items within a group/namespace (includes subgroups)
 
 FILTERING CAPABILITIES:
-- work_item_types: Filter by specific types (EPIC, ISSUE, TASK, etc.)
+- work_item_types: Filter by specific types using dynamic discovery
+  * Use type NAMES (e.g., ["ISSUE", "TASK", "EPIC"]) - case-insensitive
+  * Or use global IDs (e.g., ["gid://gitlab/WorkItems::Type/2"])
   * Multiple types can be specified as array
   * Omit to return all types
+
+⚡ DYNAMIC TYPES: The server automatically discovers available work item types from your GitLab instance, so you can use the actual type names without worrying about instance-specific IDs.
 - state: Filter by work item state
   * OPENED: Active work items
   * CLOSED: Completed work items
@@ -336,6 +401,8 @@ IDENTIFICATION OPTIONS (choose one):
 - iid + project_path: Internal ID within specific project
   * iid: Sequential number within project (e.g., #42)
   * project_path: Full project path (e.g., 'group/project')
+
+⚡ DYNAMIC TYPE INFORMATION: The returned work item includes discovered type information with both the global type ID and human-readable type name, thanks to the server's dynamic type discovery.
 
 RETURNED COMPREHENSIVE DATA:
 Core Information:
@@ -540,7 +607,19 @@ async def search_group_wrapper(input_model: GroupSearchRequest):
 # Register search tools
 mcp.tool(
     name="search_project",
-    description="""Search within a specific GitLab project across all content types.
+    description="""⚠️ REQUIRES A SEARCH TERM - Cannot list all issues. Use list_work_items to get all issues.
+
+Search within a specific GitLab project for SPECIFIC KEYWORDS in content.
+
+🎯 CRITICAL USAGE PATTERNS:
+✅ "find issues mentioning authentication in project X" → search_project(project_id="X", scope="issues", search="authentication")
+✅ "search for TODO comments in code" → search_project(project_id="X", scope="blobs", search="TODO")
+❌ "find all issues in project X" → Use list_work_items(project_path="X") instead
+❌ "list all open issues" → Use list_work_items(project_path="X", state="OPENED") instead
+
+WHEN TO USE search_project vs list_work_items:
+- search_project: When searching for SPECIFIC KEYWORDS in issue content
+- list_work_items: When listing ALL issues/tasks/epics (no search term needed)
 
 IMPORTANT: Each search call targets ONE specific scope/content type. To search multiple types, make separate calls for each scope.
 
@@ -568,7 +647,7 @@ EXAMPLE MULTI-SCOPE USAGE:
 REQUIREMENTS:
 - project_id: Project path (e.g., 'group/project') or numeric ID
 - scope: Single content type from list above
-- search: Search term (minimum 3 characters, no wildcards)
+- search: Search term (minimum 1 character, REQUIRED - cannot be empty)
 - ref: Optional branch/tag for blob and commit searches""",
 )(search_project)
 mcp.tool(

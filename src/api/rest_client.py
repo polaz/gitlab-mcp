@@ -104,6 +104,33 @@ class GitLabRestClient:
                 {"message": str(exc), "action": "get"},
             ) from exc
 
+    async def get_raw_async(self, path: str, params: dict[str, Any] | None = None) -> str:
+        """Make an async GET request to the GitLab API and return raw text content.
+
+        Args:
+            path: The API endpoint path.
+            params: Optional query parameters.
+
+        Returns:
+            The raw text response.
+
+        Raises:
+            GitLabAPIError: If the request fails.
+        """
+        client = self.get_httpx_client()
+        headers = self._get_headers()
+
+        try:
+            response = await client.get(path, headers=headers, params=params)
+            if response.is_success:
+                return response.text
+            self._handle_error_response(response)
+        except httpx.HTTPError as exc:
+            raise GitLabAPIError(
+                GitLabErrorType.REQUEST_FAILED,
+                {"message": str(exc), "action": "get_raw"},
+            ) from exc
+
     async def post_async(
         self, path: str, json_data: dict[str, Any], params: dict[str, Any] | None = None
     ) -> Any:

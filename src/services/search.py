@@ -3,6 +3,7 @@
 This module provides functions for searching across GitLab resources.
 """
 
+import urllib.parse
 from typing import Any
 
 from src.api.custom_exceptions import GitLabAPIError, GitLabErrorType
@@ -55,7 +56,11 @@ def _parse_search_results(
 
 
 async def search_globally(search_term: str, scope: SearchScope) -> list[Any]:
-    """Search across all resources in the GitLab instance (all scopes supported)."""
+    """Search across all resources in the GitLab instance for text matches.
+
+    Use this for: Cross-project discovery, finding projects by name, or global content search.
+    For structured listing of work items within a project, use list_work_items instead.
+    """
     try:
         search_request = GlobalSearchRequest(scope=scope, search=search_term)
         response = await gitlab_rest_client.get_async(
@@ -89,7 +94,11 @@ async def search_globally(search_term: str, scope: SearchScope) -> list[Any]:
 async def search_group(
     group_id: str, search_term: str, scope: SearchScope
 ) -> list[Any]:
-    """Search within a specific group (all scopes supported)."""
+    """Search within a specific group for text matches in content.
+
+    Use this for: Finding items by text content across projects within a group.
+    For structured listing of work items across group projects, use list_work_items instead.
+    """
     try:
         search_request = GroupSearchRequest(
             group_id=group_id, scope=scope, search=search_term
@@ -128,7 +137,13 @@ async def search_group(
 
 
 async def search_project(input_model: ProjectSearchRequest) -> list[Any]:
-    """Search within a specific project using a validated input model (all scopes supported)."""
+    """Search within a specific project for text matches in content.
+
+    Use this for: Finding items by text content, keywords, file names, or code snippets.
+    For listing ALL issues/work items in a project, use list_work_items instead.
+
+    Supported scopes: issues, merge_requests, milestones, wiki_blobs, commits, blobs, users.
+    """
 
     try:
         params = {
@@ -137,8 +152,10 @@ async def search_project(input_model: ProjectSearchRequest) -> list[Any]:
         }
         if input_model.ref:
             params["ref"] = input_model.ref
+        # URL-encode project_id to handle paths with slashes
+        encoded_project_id = urllib.parse.quote(str(input_model.project_id), safe='')
         response = await gitlab_rest_client.get_async(
-            f"/projects/{input_model.project_id}/search",
+            f"/projects/{encoded_project_id}/search",
             params=params,
         )
         return _parse_search_results(response, input_model.scope)

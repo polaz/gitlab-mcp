@@ -9,6 +9,8 @@ from src.schemas.files import (
     DeleteFileInput,
     FileOperationResponse,
     GetFileContentsInput,
+    GetFileRawInput,
+    GetFileTreeInput,
     GitLabContent,
     UpdateFileInput,
 )
@@ -72,6 +74,109 @@ async def get_file_contents(input_model: GetFileContentsInput) -> GitLabContent:
             {
                 "message": "Internal error retrieving file content",
                 "operation": "get_file_contents",
+            },
+        ) from exc
+
+
+async def get_file_raw(input_model: GetFileRawInput) -> str:
+    """Retrieve the raw contents of a file from a GitLab repository using the REST API.
+
+    Args:
+        input_model: The input model containing project path, file path, and ref.
+
+    Returns:
+        str: The raw file contents.
+
+    Raises:
+        GitLabAPIError: If retrieving the file content fails.
+    """
+    try:
+        project_path = gitlab_rest_client._encode_path_parameter(
+            input_model.project_path
+        )
+        ref = input_model.ref or "main"
+        file_path = gitlab_rest_client._encode_path_parameter(input_model.file_path)
+
+        endpoint = f"/projects/{project_path}/repository/files/{file_path}/raw"
+        params = {"ref": ref}
+
+        raw_content = await gitlab_rest_client.get_raw_async(endpoint, params=params)
+
+        # For raw endpoint, content is returned as text
+        return raw_content
+
+    except GitLabAPIError as exc:
+        if "not found" in str(exc).lower():
+            raise GitLabAPIError(
+                GitLabErrorType.NOT_FOUND,
+                {"message": f"File {input_model.file_path} not found"},
+            ) from exc
+        raise GitLabAPIError(
+            GitLabErrorType.REQUEST_FAILED,
+            {
+                "message": f"Failed to get raw file content for {input_model.file_path}",
+                "operation": "get_file_raw",
+            },
+        ) from exc
+    except Exception as exc:
+        raise GitLabAPIError(
+            GitLabErrorType.SERVER_ERROR,
+            {
+                "message": "Internal error retrieving raw file content",
+                "operation": "get_file_raw",
+            },
+        ) from exc
+
+
+async def get_file_tree(input_model: GetFileTreeInput) -> list[dict]:
+    """Retrieve the file tree from a GitLab repository using the REST API.
+
+    Args:
+        input_model: The input model containing project path, path, and ref.
+
+    Returns:
+        list[dict]: The file tree structure.
+
+    Raises:
+        GitLabAPIError: If retrieving the file tree fails.
+    """
+    try:
+        project_path = gitlab_rest_client._encode_path_parameter(
+            input_model.project_path
+        )
+        ref = input_model.ref or "main"
+
+        endpoint = f"/projects/{project_path}/repository/tree"
+        params = {"ref": ref}
+
+        if input_model.path:
+            params["path"] = input_model.path
+        if input_model.recursive:
+            params["recursive"] = "true"
+
+        tree_data = await gitlab_rest_client.get_async(endpoint, params=params)
+
+        return tree_data if isinstance(tree_data, list) else []
+
+    except GitLabAPIError as exc:
+        if "not found" in str(exc).lower():
+            raise GitLabAPIError(
+                GitLabErrorType.NOT_FOUND,
+                {"message": f"Path {input_model.path or '/'} not found"},
+            ) from exc
+        raise GitLabAPIError(
+            GitLabErrorType.REQUEST_FAILED,
+            {
+                "message": f"Failed to get file tree for path {input_model.path or '/'}",
+                "operation": "get_file_tree",
+            },
+        ) from exc
+    except Exception as exc:
+        raise GitLabAPIError(
+            GitLabErrorType.SERVER_ERROR,
+            {
+                "message": "Internal error retrieving file tree",
+                "operation": "get_file_tree",
             },
         ) from exc
 
@@ -217,7 +322,8 @@ async def delete_file(input_model: DeleteFileInput) -> bool:
         await gitlab_rest_client.delete_async(endpoint, params=params)
         return True
     except GitLabAPIError as exc:
-        if "not exist" in str(exc).lower() or "not found" in str(exc).lower():
+        error_msg = str(exc).lower()
+        if any(phrase in error_msg for phrase in ["not exist", "not found", "doesn't exist"]):
             return False
         raise GitLabAPIError(
             GitLabErrorType.REQUEST_FAILED,

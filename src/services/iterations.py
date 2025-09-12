@@ -4,7 +4,6 @@ from typing import Any
 
 from ..api.rest_client import GitLabRestClient
 from ..schemas.iterations import (
-    CreateIterationInput,
     DeleteIterationInput,
     GetIterationInput,
     GitLabIteration,
@@ -19,21 +18,6 @@ class GitLabIterationService:
 
     def __init__(self, client: GitLabRestClient):
         self.client = client
-
-    async def create_iteration(self, input_data: CreateIterationInput) -> GitLabIteration:
-        """Create a new iteration in GitLab."""
-        payload = {
-            "title": input_data.title,
-            "start_date": input_data.start_date,
-            "due_date": input_data.due_date,
-        }
-
-        if input_data.description:
-            payload["description"] = input_data.description
-
-        endpoint = f"/groups/{input_data.group_id}/iterations"
-        response = await self.client.post_async(endpoint, json_data=payload)
-        return GitLabIteration(**response)
 
     async def list_iterations(self, input_data: ListIterationsInput) -> IterationListResponse:
         """List iterations from GitLab."""
@@ -98,12 +82,6 @@ def _get_service():
     return GitLabIterationService(_get_client())
 
 # Functions for fastmcp integration
-async def create_iteration(input_model: CreateIterationInput):
-    """Create a new iteration in GitLab."""
-    service = _get_service()
-    result = await service.create_iteration(input_model)
-    return result.model_dump()
-
 async def list_iterations(input_model: ListIterationsInput):
     """List iterations from GitLab."""
     service = _get_service()

@@ -59,12 +59,12 @@ class BlobSearchFilters(BaseModel):
 class SearchRequest(BaseModel):
     """Base search request model for GitLab API."""
 
-    MIN_SEARCH_LENGTH: ClassVar[int] = 3
+    MIN_SEARCH_LENGTH: ClassVar[int] = 1
     scope: SearchScope = Field(
         ..., description="The scope to search in. Determines the type of results.",
     )
     search: str = Field(
-        ..., description="The search query to use. Must be at least 3 characters.",
+        ..., description="The search query to use. Must be at least 1 character. REQUIRED - cannot be empty.",
     )
 
     @field_validator("search")
@@ -107,7 +107,7 @@ class GroupSearchRequest(SearchRequest):
         - Search group issues: group_id='123', scope=SearchScope.ISSUES, search='bug'
     """
 
-    group_id: str = Field(..., description="The numeric ID or URL-encoded path of the group")
+    group_id: str = Field(..., description="The group path (e.g., 'my-group') or numeric ID (e.g., '123'). NOT a full project path.")
 
 
 class ProjectSearchRequest(SearchRequest):
@@ -117,21 +117,22 @@ class ProjectSearchRequest(SearchRequest):
     Most focused search scope, fastest results.
 
     Attributes:
-        project_id: The numeric ID OR full path of the project to search (REQUIRED).
-                   Examples: '12345', 'gitlab-org/gitlab', 'my-group/my-project'
+        project_id: Project identifier - use numeric ID OR full namespace/project path (REQUIRED).
+                   ✓ Valid: '12345', 'gitlab-org/gitlab', 'my-group/my-project'
+                   ✗ Invalid: project_path field contents (these are different)
         ref: The branch or tag to search within (OPTIONAL).
             Only applies to blob and commit searches.
             Examples: 'main', 'develop', 'v1.0.0', 'feature/auth'
             Default: searches default branch.
 
     Example Usage:
-        - Search project code: project_id='my/project', scope=SearchScope.BLOBS, search='function auth'
-        - Search specific branch: project_id='my/project', scope=SearchScope.BLOBS, search='TODO', ref='develop'
+        - Search project code: project_id='gitlab-org/gitlab', scope=SearchScope.BLOBS, search='function auth'
+        - Search specific branch: project_id='my-group/my-project', scope=SearchScope.BLOBS, search='TODO', ref='develop'
         - Search project issues: project_id='123', scope=SearchScope.ISSUES, search='login bug'
     """
 
     project_id: str = Field(
-        ..., description="The numeric ID or URL-encoded full path of the project",
+        ..., description="Project identifier: Use EITHER numeric ID (e.g., '123') OR full namespace/project path (e.g., 'group/subgroup/project'). For finding ALL issues without search, use list_work_items instead.",
     )
     ref: str | None = Field(
         None, description="The branch or tag to search in (for blobs/commits). Defaults to default branch.",
@@ -230,7 +231,7 @@ class IssueSearchResult(SearchResult):
     closed_at: str | None = Field(None, description="Issue close date if closed")
     assignee: dict[str, Any] | None = Field(None, description="Primary assignee (legacy field)")
     confidential: bool = Field(False, description="Whether the issue is confidential")
-    discussion_locked: bool = Field(False, description="Whether discussion is locked")
+    discussion_locked: bool | None = Field(None, description="Whether discussion is locked")
     due_date: str | None = Field(None, description="Issue due date if set")
     time_stats: dict[str, Any] | None = Field(None, description="Time tracking statistics")
     weight: int | None = Field(None, description="Issue weight for prioritization")
@@ -276,9 +277,9 @@ class MergeRequestSearchResult(SearchResult):
     draft: bool = Field(False, description="Whether the MR is a draft")
     work_in_progress: bool = Field(False, description="Whether marked as work in progress")
     squash: bool = Field(False, description="Whether to squash commits when merging")
-    discussion_locked: bool = Field(False, description="Whether discussion is locked")
-    should_remove_source_branch: bool = Field(False, description="Whether to delete source branch after merge")
-    force_remove_source_branch: bool = Field(False, description="Force remove source branch")
+    discussion_locked: bool | None = Field(None, description="Whether discussion is locked")
+    should_remove_source_branch: bool | None = Field(None, description="Whether to delete source branch after merge")
+    force_remove_source_branch: bool | None = Field(None, description="Force remove source branch")
     allow_collaboration: bool = Field(False, description="Allow commits from members of target project")
     allow_maintainer_to_push: bool = Field(False, description="Allow maintainer to push to source branch")
     squash_commit_sha: str | None = Field(None, description="SHA of squash commit if squashed")

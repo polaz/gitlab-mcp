@@ -16,10 +16,10 @@ from src.schemas.work_items import (
     CreateWorkItemInput,
     DeleteWorkItemInput,
     GetWorkItemInput,
-    GitLabWorkItem,
     ListWorkItemsInput,
     UpdateWorkItemInput,
 )
+from src.services.work_item_types import get_work_item_type_manager
 
 # GraphQL Queries and Mutations
 
@@ -279,6 +279,7 @@ query listProjectWorkItems(
         createdAt
         updatedAt
         author {
+          id
           name
           username
         }
@@ -324,6 +325,7 @@ query listGroupWorkItems(
         createdAt
         updatedAt
         author {
+          id
           name
           username
         }
@@ -541,7 +543,7 @@ mutation deleteWorkItem(
 
 # Service Functions
 
-async def get_work_item(input_model: GetWorkItemInput) -> GitLabWorkItem:
+async def get_work_item(input_model: GetWorkItemInput) -> dict[str, Any]:
     """Get a specific Work Item by ID or IID.
 
     Retrieves a work item using either its global ID or internal ID within a project.
@@ -550,7 +552,7 @@ async def get_work_item(input_model: GetWorkItemInput) -> GitLabWorkItem:
         input_model: Work item identification parameters
 
     Returns:
-        GitLabWorkItem: The work item with all widgets
+        dict[str, Any]: The work item as raw GraphQL response with all widgets
 
     Raises:
         GitLabAPIError: If work item not found or query fails
@@ -567,7 +569,7 @@ async def get_work_item(input_model: GetWorkItemInput) -> GitLabWorkItem:
                     {"message": f"Work item {input_model.id} not found"}
                 )
 
-            return GitLabWorkItem.model_validate(result["workItem"])
+            return result["workItem"]
 
         elif input_model.iid and input_model.project_path:
             # Get by IID within project
@@ -584,7 +586,7 @@ async def get_work_item(input_model: GetWorkItemInput) -> GitLabWorkItem:
                     {"message": f"Work item {input_model.iid} not found in project {input_model.project_path}"}
                 )
 
-            return GitLabWorkItem.model_validate(work_items[0])
+            return work_items[0]
 
         else:
             raise GitLabAPIError(
@@ -604,16 +606,22 @@ async def get_work_item(input_model: GetWorkItemInput) -> GitLabWorkItem:
         ) from exc
 
 
-async def list_work_items(input_model: ListWorkItemsInput) -> list[GitLabWorkItem]:
-    """List Work Items from a project or group.
+async def list_work_items(input_model: ListWorkItemsInput) -> list[dict[str, Any]]:
+    """List all work items (issues, epics, tasks) from a project or group with structured filtering.
 
-    Retrieves work items with optional filtering by type, state, and search terms.
+    **PREFERRED for listing issues/work items**: Use this instead of search APIs when you need:
+    - All issues/work items in a project/group (no search query needed)
+    - Structured filtering by state, type, assignee, labels
+    - Complete work item metadata and relationships
+    - Reliable pagination through large datasets
+
+    Use search APIs only for text-based content searches within work item descriptions/titles.
 
     Args:
-        input_model: Listing parameters with filters
+        input_model: Listing parameters with filters (project_path OR namespace_path required)
 
     Returns:
-        List[GitLabWorkItem]: List of work items matching criteria
+        List[dict]: List of work items with full metadata including widgets
 
     Raises:
         GitLabAPIError: If listing fails
@@ -664,7 +672,7 @@ async def list_work_items(input_model: ListWorkItemsInput) -> list[GitLabWorkIte
                 {"message": "Either project_path or namespace_path must be provided"}
             )
 
-        return [GitLabWorkItem.model_validate(item) for item in work_items_data]
+        return work_items_data
 
     except GitLabAPIError:
         raise
@@ -678,7 +686,100 @@ async def list_work_items(input_model: ListWorkItemsInput) -> list[GitLabWorkIte
         ) from exc
 
 
-async def create_work_item(input_model: CreateWorkItemInput) -> GitLabWorkItem:
+def _resolve_work_item_type_id(work_item_type_id: str) -> str:
+    """Resolve work item type ID from name if needed.
+
+    Args:
+        work_item_type_id: Either a type name or a global ID
+
+    Returns:
+        Resolved global ID
+
+    Raises:
+        GitLabAPIError: If type name cannot be resolved
+    """
+    if work_item_type_id.startswith("gid://"):
+        return work_item_type_id
+
+    type_manager = get_work_item_type_manager()
+    resolved_id = type_manager.get_type_id(work_item_type_id)
+    if resolved_id:
+        return resolved_id
+
+    raise GitLabAPIError(
+        GitLabErrorType.REQUEST_FAILED,
+        {"message": f"Unknown work item type: {work_item_type_id}"}
+    )
+
+
+def _build_create_input(input_model: CreateWorkItemInput, resolved_type_id: str) -> dict:
+    """Build GraphQL input for work item creation.
+
+    Args:
+        input_model: Input model with creation parameters
+        resolved_type_id: Resolved work item type global ID
+
+    Returns:
+        Dictionary with GraphQL input parameters
+
+    Raises:
+        GitLabAPIError: If neither project_path nor namespace_path is provided
+    """
+    create_input = {
+        "workItemTypeId": resolved_type_id,
+        "title": input_model.title,
+    }
+
+    # Add context path
+    if input_model.project_path:
+        create_input["projectPath"] = input_model.project_path
+    elif input_model.namespace_path:
+        create_input["namespacePath"] = input_model.namespace_path
+    else:
+        raise GitLabAPIError(
+            GitLabErrorType.REQUEST_FAILED,
+            {"message": "Either project_path or namespace_path must be provided"}
+        )
+
+    # Add optional basic fields
+    if input_model.description:
+        create_input["description"] = input_model.description
+    if input_model.confidential is not None:
+        create_input["confidential"] = input_model.confidential
+
+    return create_input
+
+
+def _process_create_result(result: dict) -> dict[str, Any]:
+    """Process GraphQL mutation result and return work item.
+
+    Args:
+        result: GraphQL mutation result
+
+    Returns:
+        Created work item as raw GraphQL response
+
+    Raises:
+        GitLabAPIError: If creation failed or returned no data
+    """
+    if result.get("workItemCreate", {}).get("errors"):
+        errors = result["workItemCreate"]["errors"]
+        raise GitLabAPIError(
+            GitLabErrorType.REQUEST_FAILED,
+            {"message": f"Work item creation failed: {'; '.join(errors)}"}
+        )
+
+    work_item_data = result.get("workItemCreate", {}).get("workItem")
+    if not work_item_data:
+        raise GitLabAPIError(
+            GitLabErrorType.REQUEST_FAILED,
+            {"message": "Work item creation returned no data"}
+        )
+
+    return work_item_data
+
+
+async def create_work_item(input_model: CreateWorkItemInput) -> dict[str, Any]:
     """Create a new Work Item.
 
     Creates a work item with the specified type and properties.
@@ -687,34 +788,17 @@ async def create_work_item(input_model: CreateWorkItemInput) -> GitLabWorkItem:
         input_model: Work item creation parameters
 
     Returns:
-        GitLabWorkItem: The created work item
+        dict[str, Any]: The created work item as raw GraphQL response
 
     Raises:
         GitLabAPIError: If creation fails
     """
     try:
+        # Resolve work item type ID from name if needed
+        work_item_type_id = _resolve_work_item_type_id(input_model.work_item_type_id)
+
         # Build the GraphQL input
-        create_input = {
-            "workItemTypeId": input_model.work_item_type_id,
-            "title": input_model.title,
-        }
-
-        # Add context path
-        if input_model.project_path:
-            create_input["projectPath"] = input_model.project_path
-        elif input_model.namespace_path:
-            create_input["namespacePath"] = input_model.namespace_path
-        else:
-            raise GitLabAPIError(
-                GitLabErrorType.REQUEST_FAILED,
-                {"message": "Either project_path or namespace_path must be provided"}
-            )
-
-        # Add optional basic fields
-        if input_model.description:
-            create_input["description"] = input_model.description
-        if input_model.confidential is not None:
-            create_input["confidential"] = input_model.confidential
+        create_input = _build_create_input(input_model, work_item_type_id)
 
         # Note: Widget-based operations (assignees, labels, hierarchy, etc.)
         # are not yet implemented in this basic creation function.
@@ -725,21 +809,7 @@ async def create_work_item(input_model: CreateWorkItemInput) -> GitLabWorkItem:
         variables = {"input": create_input}
         result = await get_graphql_client().mutation(CREATE_WORK_ITEM_MUTATION, variables)
 
-        if result.get("workItemCreate", {}).get("errors"):
-            errors = result["workItemCreate"]["errors"]
-            raise GitLabAPIError(
-                GitLabErrorType.REQUEST_FAILED,
-                {"message": f"Work item creation failed: {'; '.join(errors)}"}
-            )
-
-        work_item_data = result.get("workItemCreate", {}).get("workItem")
-        if not work_item_data:
-            raise GitLabAPIError(
-                GitLabErrorType.REQUEST_FAILED,
-                {"message": "Work item creation returned no data"}
-            )
-
-        return GitLabWorkItem.model_validate(work_item_data)
+        return _process_create_result(result)
 
     except GitLabAPIError:
         raise
@@ -753,7 +823,7 @@ async def create_work_item(input_model: CreateWorkItemInput) -> GitLabWorkItem:
         ) from exc
 
 
-async def update_work_item(input_model: UpdateWorkItemInput) -> GitLabWorkItem:
+async def update_work_item(input_model: UpdateWorkItemInput) -> dict[str, Any]:
     """Update an existing Work Item.
 
     Updates work item properties using widget-based operations.
@@ -762,7 +832,7 @@ async def update_work_item(input_model: UpdateWorkItemInput) -> GitLabWorkItem:
         input_model: Work item update parameters
 
     Returns:
-        GitLabWorkItem: The updated work item
+        dict[str, Any]: The updated work item as raw GraphQL response
 
     Raises:
         GitLabAPIError: If update fails
@@ -801,7 +871,7 @@ async def update_work_item(input_model: UpdateWorkItemInput) -> GitLabWorkItem:
                 {"message": "Work item update returned no data"}
             )
 
-        return GitLabWorkItem.model_validate(work_item_data)
+        return work_item_data
 
     except GitLabAPIError:
         raise

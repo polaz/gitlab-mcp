@@ -29,12 +29,14 @@ class CreateRepositoryInput(BaseModel):
                    PUBLIC = anyone can access, including anonymous users
         initialize_with_readme: Create an initial README.md file (OPTIONAL).
                                true = create README, false (default) = empty repository
-
-    IMPORTANT: This creates a project within your personal namespace or default group.
-    To create in a specific group, use the group's project creation API instead.
+        namespace_id: The namespace (group or user) ID to create the project in (OPTIONAL).
+                     If not provided, creates in your personal namespace.
+                     Can be a group ID number or group path string.
+                     Examples: '123', 'my-group', 'parent-group/sub-group'
 
     Example Usage:
-        - Basic project: name='my-app', description='My application'
+        - Personal project: name='my-app', description='My application'
+        - Group project: name='team-app', namespace_id='my-group'
         - Public project: name='open-source-lib', visibility=VisibilityLevel.PUBLIC, initialize_with_readme=True
     """
 
@@ -42,6 +44,7 @@ class CreateRepositoryInput(BaseModel):
     description: str | None = None
     visibility: VisibilityLevel = VisibilityLevel.PRIVATE
     initialize_with_readme: bool = False
+    namespace_id: str | int | None = None
 
 
 class GitLabRepository(GitLabResponseBase):
@@ -148,6 +151,64 @@ class SearchProjectsInput(BaseModel):
     search: str
     page: int = 1
     per_page: int = 20
+
+
+class GetRepositoryInput(BaseModel):
+    """Input model for getting a specific repository.
+
+    Attributes:
+        project_path: The path of the project (e.g., 'namespace/project').
+    """
+
+    project_path: str
+
+
+class ListRepositoriesInput(BaseModel):
+    """Input model for listing repositories.
+
+    Attributes:
+        page: The page number for pagination.
+        per_page: The number of items per page.
+        owned: Show only owned projects.
+        starred: Show only starred projects.
+        search: Search query to filter projects.
+        group_id: Filter projects by group/namespace path or ID.
+    """
+
+    page: int = 1
+    per_page: int = 20
+    owned: bool = False
+    starred: bool = False
+    search: str | None = None
+    group_id: str | None = None
+
+
+class UpdateRepositoryInput(BaseModel):
+    """Input model for updating a repository.
+
+    Attributes:
+        project_path: The path of the project (e.g., 'namespace/project').
+        name: New name for the project.
+        description: New description for the project.
+        visibility: New visibility level for the project.
+        default_branch: New default branch name.
+    """
+
+    project_path: str
+    name: str | None = None
+    description: str | None = None
+    visibility: VisibilityLevel | None = None
+    default_branch: str | None = None
+
+
+class DeleteRepositoryInput(BaseModel):
+    """Input model for deleting a repository.
+
+    Attributes:
+        project_path: The path of the project (e.g., 'namespace/project').
+    """
+
+    project_path: str
 
 
 class GitLabSearchResponse(PaginatedResponse[dict[str, str | int | bool | None]]):
