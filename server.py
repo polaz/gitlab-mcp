@@ -770,6 +770,11 @@ PERFORMANCE NOTES:
 )(search_group_wrapper)
 
 
+def main():
+    """Main entry point for the GitLab MCP server."""
+    mcp.run(transport="stdio")
+
+
 # Run the server
 if __name__ == "__main__":
-    mcp.run(transport="stdio")
+    main()
