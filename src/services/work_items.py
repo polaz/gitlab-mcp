@@ -747,7 +747,39 @@ def _build_create_input(input_model: CreateWorkItemInput, resolved_type_id: str)
     if input_model.confidential is not None:
         create_input["confidential"] = input_model.confidential
 
+    # Add widget operations for creation
+    _add_create_widget_operations(input_model, create_input)
+
     return create_input
+
+
+def _add_create_widget_operations(input_model: CreateWorkItemInput, create_input: dict[str, Any]) -> None:
+    """Add widget operations to work item creation input."""
+    if input_model.assignees_widget:
+        create_input["assigneesWidget"] = {
+            "userIds": input_model.assignees_widget
+        }
+
+    if input_model.labels_widget:
+        create_input["labelsWidget"] = {
+            "addLabelIds": input_model.labels_widget
+        }
+
+    if input_model.hierarchy_widget:
+        create_input["hierarchyWidget"] = input_model.hierarchy_widget
+
+    if input_model.milestone_widget:
+        create_input["milestoneWidget"] = {
+            "milestoneId": input_model.milestone_widget
+        }
+
+    if input_model.iteration_widget:
+        create_input["iterationWidget"] = {
+            "iterationId": input_model.iteration_widget
+        }
+
+    if input_model.dates_widget:
+        create_input["startAndDueDateWidget"] = input_model.dates_widget
 
 
 def _process_create_result(result: dict) -> dict[str, Any]:
@@ -801,10 +833,8 @@ async def create_work_item(input_model: CreateWorkItemInput) -> dict[str, Any]:
         create_input = _build_create_input(input_model, work_item_type_id)
 
         # Note: Widget-based operations (assignees, labels, hierarchy, etc.)
-        # are not yet implemented in this basic creation function.
-        # They would require additional GraphQL mutation operations or
-        # more complex input structure. Current implementation supports
-        # basic work item creation with core fields only.
+        # are now fully supported in work item creation through the enhanced
+        # _build_create_input function that processes all widget fields.
 
         variables = {"input": create_input}
         result = await get_graphql_client().mutation(CREATE_WORK_ITEM_MUTATION, variables)
@@ -823,6 +853,71 @@ async def create_work_item(input_model: CreateWorkItemInput) -> dict[str, Any]:
         ) from exc
 
 
+def _build_basic_fields(input_model: UpdateWorkItemInput) -> dict[str, Any]:
+    """Build basic work item update fields."""
+    update_input = {"id": input_model.id}
+
+    if input_model.title:
+        update_input["title"] = input_model.title
+    if input_model.state_event:
+        update_input["stateEvent"] = input_model.state_event.upper()
+    if input_model.confidential is not None:
+        update_input["confidential"] = input_model.confidential
+
+    return update_input
+
+
+def _build_labels_widget(labels_widget_input, update_input: dict[str, Any]) -> None:
+    """Build labels widget operation."""
+    labels_widget = {}
+    if labels_widget_input.add_label_ids:
+        labels_widget["addLabelIds"] = labels_widget_input.add_label_ids
+    if labels_widget_input.remove_label_ids:
+        labels_widget["removeLabelIds"] = labels_widget_input.remove_label_ids
+    if labels_widget:
+        update_input["labelsWidget"] = labels_widget
+
+
+def _build_dates_widget(dates_widget_input, update_input: dict[str, Any]) -> None:
+    """Build dates widget operation."""
+    dates_widget = {}
+    if dates_widget_input.start_date is not None:
+        dates_widget["startDate"] = dates_widget_input.start_date
+    if dates_widget_input.due_date is not None:
+        dates_widget["dueDate"] = dates_widget_input.due_date
+    if dates_widget:
+        update_input["startAndDueDateWidget"] = dates_widget
+
+
+def _build_widget_operations(input_model: UpdateWorkItemInput, update_input: dict[str, Any]) -> None:
+    """Build widget operations for work item update."""
+    if input_model.assignees_widget:
+        update_input["assigneesWidget"] = {
+            "userIds": input_model.assignees_widget.user_ids
+        }
+
+    if input_model.labels_widget:
+        _build_labels_widget(input_model.labels_widget, update_input)
+
+    if input_model.hierarchy_widget:
+        update_input["hierarchyWidget"] = {
+            "parentId": input_model.hierarchy_widget.parent_id
+        }
+
+    if input_model.milestone_widget:
+        update_input["milestoneWidget"] = {
+            "milestoneId": input_model.milestone_widget.milestone_id
+        }
+
+    if input_model.iteration_widget:
+        update_input["iterationWidget"] = {
+            "iterationId": input_model.iteration_widget.iteration_id
+        }
+
+    if input_model.dates_widget:
+        _build_dates_widget(input_model.dates_widget, update_input)
+
+
 async def update_work_item(input_model: UpdateWorkItemInput) -> dict[str, Any]:
     """Update an existing Work Item.
 
@@ -839,20 +934,8 @@ async def update_work_item(input_model: UpdateWorkItemInput) -> dict[str, Any]:
     """
     try:
         # Build the GraphQL input
-        update_input = {"id": input_model.id}
-
-        # Add basic fields
-        if input_model.title:
-            update_input["title"] = input_model.title
-        if input_model.state_event:
-            # Convert state event to GraphQL API format (uppercase)
-            state_event = input_model.state_event.upper()
-            update_input["stateEvent"] = state_event
-        if input_model.confidential is not None:
-            update_input["confidential"] = input_model.confidential
-
-        # TODO(@dmitry): https://github.com/polaz/gitlab-mcp/issues/1 Add widget operations for more complex updates
-        # This would include assignees, labels, hierarchy, etc.
+        update_input = _build_basic_fields(input_model)
+        _build_widget_operations(input_model, update_input)
 
         variables = {"input": update_input}
         result = await get_graphql_client().mutation(UPDATE_WORK_ITEM_MUTATION, variables)

@@ -263,6 +263,56 @@ class CreateWorkItemInput(BaseModel):
     dates_widget: dict[str, str] | None = Field(None, description="Start and due dates")
 
 
+class AssigneeWidgetOperation(BaseModel):
+    """Assignees widget operation for work items.
+
+    Supports adding, removing, or replacing assignees.
+    """
+    user_ids: list[str] = Field(..., description="List of GitLab user IDs (gid://gitlab/User/123 format)")
+
+
+class LabelWidgetOperation(BaseModel):
+    """Labels widget operation for work items.
+
+    Supports adding or removing labels by ID or name.
+    """
+    add_label_ids: list[str] | None = Field(None, description="Label IDs to add (gid://gitlab/ProjectLabel/123 format)")
+    remove_label_ids: list[str] | None = Field(None, description="Label IDs to remove")
+
+
+class HierarchyWidgetOperation(BaseModel):
+    """Hierarchy widget operation for work items.
+
+    Sets or clears parent-child relationships.
+    """
+    parent_id: str | None = Field(None, description="Parent work item ID (gid://gitlab/WorkItem/123 format), null to clear")
+
+
+class MilestoneWidgetOperation(BaseModel):
+    """Milestone widget operation for work items.
+
+    Associates or clears milestone assignment.
+    """
+    milestone_id: str | None = Field(None, description="Milestone ID (gid://gitlab/Milestone/123 format), null to clear")
+
+
+class IterationWidgetOperation(BaseModel):
+    """Iteration widget operation for work items.
+
+    Associates or clears iteration assignment.
+    """
+    iteration_id: str | None = Field(None, description="Iteration ID (gid://gitlab/Iteration/123 format), null to clear")
+
+
+class DatesWidgetOperation(BaseModel):
+    """Dates widget operation for work items.
+
+    Sets or clears start and due dates.
+    """
+    start_date: str | None = Field(None, description="Start date (YYYY-MM-DD format), null to clear")
+    due_date: str | None = Field(None, description="Due date (YYYY-MM-DD format), null to clear")
+
+
 class UpdateWorkItemInput(BaseModel):
     """Input model for updating Work Items via GraphQL.
 
@@ -274,7 +324,7 @@ class UpdateWorkItemInput(BaseModel):
         state_event: State change action ('CLOSE' or 'REOPEN').
         confidential: Change confidentiality status.
 
-        # Widget updates
+        # Widget operations (structured)
         assignees_widget: Assignee operations.
         labels_widget: Label operations.
         hierarchy_widget: Hierarchy operations.
@@ -289,13 +339,13 @@ class UpdateWorkItemInput(BaseModel):
     state_event: str | None = Field(None, description="State change action")
     confidential: bool | None = Field(None, description="Change confidentiality")
 
-    # Widget update operations
-    assignees_widget: dict[str, Any] | None = Field(None, description="Assignee widget operations")
-    labels_widget: dict[str, Any] | None = Field(None, description="Labels widget operations")
-    hierarchy_widget: dict[str, Any] | None = Field(None, description="Hierarchy widget operations")
-    milestone_widget: dict[str, Any] | None = Field(None, description="Milestone widget operations")
-    iteration_widget: dict[str, Any] | None = Field(None, description="Iteration widget operations")
-    dates_widget: dict[str, Any] | None = Field(None, description="Dates widget operations")
+    # Widget update operations (structured)
+    assignees_widget: AssigneeWidgetOperation | None = Field(None, description="Assignee widget operations")
+    labels_widget: LabelWidgetOperation | None = Field(None, description="Labels widget operations")
+    hierarchy_widget: HierarchyWidgetOperation | None = Field(None, description="Hierarchy widget operations")
+    milestone_widget: MilestoneWidgetOperation | None = Field(None, description="Milestone widget operations")
+    iteration_widget: IterationWidgetOperation | None = Field(None, description="Iteration widget operations")
+    dates_widget: DatesWidgetOperation | None = Field(None, description="Dates widget operations")
     description_widget: dict[str, Any] | None = Field(None, description="Description widget operations")
 
 

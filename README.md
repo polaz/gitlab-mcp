@@ -184,17 +184,62 @@ The server provides the following tools for interacting with GitLab:
 
 **🚀 PRIMARY API**: GitLab's unified Work Items API replaces deprecated epic/issue REST endpoints with enhanced functionality and comprehensive agentic support.
 
-- **`create_work_item`**: Create epics, issues, tasks, objectives, incidents, test cases, and requirements with comprehensive hierarchy documentation and widget support explanations for effective agentic planning.
+- **`create_work_item`**: **🚀 ENHANCED WITH FULL WIDGET SUPPORT** - Create epics, issues, tasks, objectives, incidents, test cases, and requirements with complete widget operations (labels, assignees, hierarchy, milestones, dates) during creation. One-step work item creation with comprehensive agentic guidance.
 
 - **`list_work_items`**: Advanced filtering by type, state, search terms with project/group scope support. Comprehensive pagination and performance guidance for optimal agentic workflow management.
 
 - **`get_work_item`**: Complete work item retrieval with all 19 widget types (assignees, hierarchy, labels, milestones, iterations, dates, descriptions, progress, health status, weight, and more). Supports both global ID and IID+project access methods.
 
-- **`update_work_item`**: Title, confidential flag, and state management (open/close) with comprehensive documentation of widget-based architecture for future enhancements.
+- **`update_work_item`**: Advanced widget operations for comprehensive work item management including:
+  - **Assignee Management**: Add/remove user assignments with structured operations
+  - **Label Operations**: Add and remove labels with granular control
+  - **Hierarchy Management**: Set parent-child relationships between work items
+  - **Milestone Assignment**: Associate or clear milestone assignments
+  - **Iteration Assignment**: Sprint/iteration management (Premium/Ultimate)
+  - **Date Management**: Set start and due dates with validation
+  - **State Transitions**: Open/close work items with proper state management
+  - **Confidentiality Control**: Toggle confidential status
+  - **Title Updates**: Modify work item titles with validation
 
 - **`delete_work_item`**: Permanent deletion with comprehensive safety warnings, verification procedures, and detailed impact documentation by work item type for responsible agentic operations.
 
 **✅ VERIFIED**: All functions thoroughly tested against live GitLab API.
+
+#### Widget Operations in Work Items
+
+GitLab Work Items use a widget-based architecture where functionality is provided through specialized widgets. This MCP server implements structured widget operations for comprehensive work item management:
+
+**Available Widget Operations:**
+
+- **Assignees Widget** (`AssigneeWidgetOperation`):
+  - Assign multiple users to work items using GitLab user IDs
+  - Format: `gid://gitlab/User/123`
+
+- **Labels Widget** (`LabelWidgetOperation`):
+  - Add specific labels: `add_label_ids: ["gid://gitlab/ProjectLabel/456"]`
+  - Remove specific labels: `remove_label_ids: ["gid://gitlab/ProjectLabel/789"]`
+  - Granular control over label modifications
+
+- **Hierarchy Widget** (`HierarchyWidgetOperation`):
+  - Set parent-child relationships: `parent_id: "gid://gitlab/WorkItem/123"`
+  - Clear relationships: `parent_id: null`
+  - Enable epic → issue → task hierarchies
+
+- **Milestone Widget** (`MilestoneWidgetOperation`):
+  - Associate with milestones: `milestone_id: "gid://gitlab/Milestone/456"`
+  - Clear assignments: `milestone_id: null`
+
+- **Iteration Widget** (`IterationWidgetOperation`):
+  - Sprint management: `iteration_id: "gid://gitlab/Iteration/789"`
+  - Clear assignments: `iteration_id: null`
+  - Requires Premium/Ultimate tier
+
+- **Dates Widget** (`DatesWidgetOperation`):
+  - Set dates: `start_date: "2024-01-15", due_date: "2024-02-15"`
+  - Clear dates: `start_date: null, due_date: null`
+  - ISO date format validation
+
+**Type Safety:** All widget operations use Pydantic schemas for validation, ensuring proper data types and preventing API errors before requests are sent to GitLab.
 
 ### Milestone Operations
 
@@ -213,15 +258,22 @@ The server provides the following tools for interacting with GitLab:
 - `update_iteration`: Update an existing iteration in GitLab including title, description, dates, and state changes
 - `delete_iteration`: Permanently delete an iteration from a GitLab group
 
-### Label Operations
+### Label Management (Via Work Items API) ⭐
 
-- `list_labels`: List GitLab labels at project or group level
-- `get_label`: Get details for a specific GitLab label
-- `create_label`: Create a new GitLab label
-- `update_label`: Update an existing GitLab label
-- `delete_label`: Delete a GitLab label
-- `subscribe_to_label`: Subscribe to a GitLab project label
-- `unsubscribe_from_label`: Unsubscribe from a GitLab project label
+**🚀 PRIMARY LABEL MANAGEMENT**: Labels are now managed through the modern Work Items API for comprehensive integration:
+
+- **`create_work_item`** with `labels_widget`: Create work items with labels during creation
+- **`update_work_item`** with `labels_widget`: Add/remove labels from existing work items  
+- **`get_work_item`**: View current labels on work items with full label details
+- **`search_project`**: Discover existing labels by searching for label usage patterns
+
+**🎯 AGENT-OPTIMIZED WORKFLOW**:
+1. **Discovery**: Use search tools to find existing labels before creating work items
+2. **Creation**: Use `create_work_item` with `labels_widget` for new work items with labels
+3. **Updates**: Use `update_work_item` with `labels_widget` for modifying existing work item labels
+4. **Verification**: Use `get_work_item` to confirm label assignments
+
+**⚠️ IMPORTANT FOR AI AGENTS**: Always discover existing labels before creating new ones to maintain consistency and prevent label proliferation.
 
 ## Breaking Changes from Upstream
 
@@ -247,11 +299,11 @@ This project has been completely refactored from the original repository with si
 - **Merge Requests**: Full merge request workflow support
 - **Search Functionality**: Enhanced search with contextual fields across all content types
 - **Milestone Management**: Complete milestone lifecycle with UX-optimized schemas
-- **Label Operations**: Full label CRUD with subscription management
+- **Label Management**: Integrated label operations via Work Items API with agent-optimized workflows
 - **Iteration Support**: Premium/Ultimate tier iteration management
 
 **✅ Verified & Tested:**
-- **Comprehensive Test Suite**: 182 tests covering all functionality with 100% pass rate
+- **Comprehensive Test Suite**: 186 tests covering all functionality with 100% pass rate
 - **Integration Testing**: Full end-to-end testing against live GitLab API
 - **Unit Testing**: Isolated component testing with mock validation
 - **Performance Testing**: Bulk operation and timeout optimization
@@ -261,7 +313,7 @@ This project has been completely refactored from the original repository with si
 - **Test Infrastructure**: Automated cleanup, fixtures, and validation utilities
 
 **🧪 Testing Infrastructure:**
-- **182 tests total** with comprehensive coverage of all GitLab operations
+- **186 tests total** with comprehensive coverage of all GitLab operations
 - **Integration tests** against live GitLab instance with safety guards
 - **Unit tests** for isolated component validation
 - **Performance benchmarks** for bulk operations and API efficiency

@@ -285,28 +285,42 @@ CURRENTLY SUPPORTED FIELDS:
 - description: Markdown description (optional)
 - confidential: Privacy setting (optional)
 
-WIDGET SUPPORT STATUS:
-⚠️ CURRENT LIMITATION: Advanced widget operations are not yet implemented in create_work_item.
-The following features are planned for future enhancement:
+🚀 **WIDGET SUPPORT STATUS: FULLY IMPLEMENTED IN create_work_item!**
 
-PLANNED WIDGET CAPABILITIES:
-- Hierarchy: Parent/child relationships between work items
-- Assignees: Users responsible for the work
-- Labels: Categorization and filtering tags
-  ⚠️ IMPORTANT: Agents should ONLY use labels that already exist in the project/group scope.
-  Use list_labels or search functions to discover existing labels before assigning them.
-  Creating new labels should be done explicitly through separate label management functions after user approval.
-- Milestone: Release/sprint association
-- Iteration: Sprint/iteration assignment (Premium/Ultimate)
-- Health Status: On track/needs attention/at risk
-- Progress: Percentage completion
-- Weight: Story points or complexity estimation
-- Start/Due Dates: Timeline planning
+✅ **ONE-STEP WORK ITEM CREATION**: create_work_item now supports ALL widget operations directly during creation!
 
-CURRENT WORKFLOW:
-1. Create basic work item with create_work_item (title, description, confidential)
-2. Use update_work_item for advanced widget operations (when implemented)
-3. Use get_work_item to inspect created work item with all widgets
+**AVAILABLE WIDGET OPERATIONS (in create_work_item):**
+
+✅ **Labels Management**: Direct label assignment during creation
+  🚨 **CRITICAL FOR AGENTS**: ALWAYS discover existing labels before creating work items with labels
+  - **MANDATORY WORKFLOW**:
+    1. Use search_project(scope="issues", search="label:") to find existing labels usage patterns
+    2. Extract label IDs from search results
+    3. Use discovered label IDs in create_work_item() labels_widget parameter
+    4. NEVER create new labels without explicit user approval after showing alternatives
+  - **Field**: `labels_widget: ["gid://gitlab/ProjectLabel/123", "gid://gitlab/ProjectLabel/456"]`
+
+✅ **Assignee Management**: Direct user assignment during creation
+  - **Field**: `assignees_widget: ["gid://gitlab/User/123", "gid://gitlab/User/456"]`
+
+✅ **Hierarchy Management**: Set parent-child relationships during creation (epic → issue → task)
+  - **Field**: `hierarchy_widget: {"parentId": "gid://gitlab/WorkItem/123"}`
+
+✅ **Milestone Assignment**: Associate with release milestones during creation
+  - **Field**: `milestone_widget: "gid://gitlab/Milestone/123"`
+
+✅ **Iteration Assignment**: Sprint management during creation (Premium/Ultimate)
+  - **Field**: `iteration_widget: "gid://gitlab/Iteration/123"`
+
+✅ **Dates Management**: Set start and due dates during creation
+  - **Field**: `dates_widget: {"startDate": "2024-01-15", "dueDate": "2024-02-15"}`
+
+🎯 **STREAMLINED WORKFLOW FOR AGENTS:**
+1. **DISCOVER LABELS FIRST**: Use search tools to find existing labels if needed
+2. **ONE-STEP CREATION**: Call create_work_item with ALL desired widgets (labels, assignees, hierarchy, etc.)
+3. **VERIFICATION**: Use get_work_item to verify all applied widgets and relationships
+
+**💡 MAJOR IMPROVEMENT**: No more two-step workflow! Everything can be done in create_work_item directly.
 
 COMMON USAGE PATTERNS:
 1. Epic → Issues → Tasks (hierarchical planning)
@@ -461,7 +475,12 @@ COMMON USE CASES:
 
 mcp.tool(
     name="update_work_item",
-    description="""Update a Work Item using GitLab's modern Work Items API (GraphQL).
+    description="""🔄 **UPDATE EXISTING WORK ITEMS**: Modify work items that already exist with comprehensive widget operations.
+
+**COMPLEMENTARY TO create_work_item**:
+- Use `create_work_item` for NEW work items with widgets
+- Use `update_work_item` for MODIFYING EXISTING work items with widgets
+- Both tools have IDENTICAL widget capabilities
 
 REQUIRED IDENTIFICATION:
 - id: Global Work Item ID (format: gid://gitlab/WorkItem/123)
@@ -474,52 +493,66 @@ BASIC FIELD UPDATES:
   * 'reopen': Reopen a closed work item
   * 'close': Close an open work item
 
-WIDGET-BASED UPDATES (available via GraphQL mutations):
-⚠️ Note: Advanced widget operations are currently limited in this implementation
-Future enhancements will include full widget manipulation:
+WIDGET-BASED UPDATES (FULLY IMPLEMENTED):
+✅ Comprehensive widget operations are now available with structured Pydantic schemas:
 
-Planned Widget Operations:
-• Hierarchy Management:
-  - Set parent work item relationships
-  - Add/remove child work items
-  - Reorder children within hierarchy
+AVAILABLE WIDGET OPERATIONS:
 
-• Assignee Management:
-  - Assign users to work items
-  - Remove assignees
-  - Replace entire assignee list
+• **Assignee Management** (AssigneeWidgetOperation):
+  - Assign multiple users using GitLab user IDs
+  - Format: user_ids: ["gid://gitlab/User/123", "gid://gitlab/User/456"]
+  - Replaces existing assignees with specified users
 
-• Label Management:
-  - Add labels to work items
-  - Remove specific labels
-  - Replace all labels at once
+• **Label Management** (LabelWidgetOperation) - ⭐ PRIMARY LABEL API:
+  🚨 **CRITICAL FOR AGENTS - LABEL DISCOVERY WORKFLOW**:
 
-• Milestone/Iteration Assignment:
-  - Set milestone for release planning
-  - Assign to iteration for sprint management
-  - Clear milestone/iteration assignments
+  **MANDATORY STEPS BEFORE LABEL OPERATIONS:**
+  1. **ALWAYS FIRST**: Use get_work_item() to see current labels on the work item
+  2. **DISCOVER AVAILABLE**: Use search_project(scope="issues", search="label:") to find existing labels
+  3. **VERIFY LABEL IDS**: Extract label IDs from search results or existing work items
+  4. **NEVER ASSUME**: Never hardcode or guess label names/IDs
 
-• Progress Tracking:
-  - Update progress percentage
-  - Set health status indicators
-  - Update weight/story points
+  **LABEL OPERATIONS:**
+  - Add specific labels: add_label_ids: ["gid://gitlab/ProjectLabel/123"]
+  - Remove specific labels: remove_label_ids: ["gid://gitlab/ProjectLabel/456"]
+  - Granular control: modify labels without affecting other work item properties
+  **RESPONSIBLE AGENT WORKFLOW:**
+  ```
+  User: "Add 'bug' and 'frontend' labels to issue #42"
+  Agent Steps:
+  1. Call get_work_item(iid=42) to see current labels and get work item ID
+  2. Call search_project(scope="issues", search="label:bug OR label:frontend") to find existing label usage
+  3. Extract label IDs from found issues with those labels
+  4. Call update_work_item(id=work_item_id, labels_widget={add_label_ids: [...]})
+  ```
+  **⚠️ AVOID**: Creating new labels unless explicitly requested and approved by user
 
-• Timeline Management:
-  - Set start and due dates
-  - Clear date assignments
-  - Schedule work items
+• **Hierarchy Management** (HierarchyWidgetOperation):
+  - Set parent relationships: parent_id: "gid://gitlab/WorkItem/123"
+  - Clear relationships: parent_id: null
+  - Enable epic → issue → task hierarchies
 
-CURRENT CAPABILITIES:
-- Basic field updates (title, state, confidential)
-- State transitions (open/close)
-- Work item property modifications
+• **Milestone Assignment** (MilestoneWidgetOperation):
+  - Associate with milestone: milestone_id: "gid://gitlab/Milestone/123"
+  - Clear assignment: milestone_id: null
+  - Release and sprint planning support
 
-PLANNED ENHANCEMENTS:
-Widget-based operations will be added in future updates to support:
-- Complete assignee management
-- Comprehensive label operations
-- Hierarchy relationship management
-- Progress and timeline updates
+• **Iteration Assignment** (IterationWidgetOperation):
+  - Assign to iteration: iteration_id: "gid://gitlab/Iteration/123"
+  - Clear assignment: iteration_id: null
+  - Agile sprint management (Premium/Ultimate tiers)
+
+• **Date Management** (DatesWidgetOperation):
+  - Set dates: start_date: "2024-01-15", due_date: "2024-02-15"
+  - Clear dates: start_date: null, due_date: null
+  - ISO date format validation and timeline planning
+
+IMPLEMENTATION FEATURES:
+- ✅ Type-safe Pydantic schemas for all widget operations
+- ✅ Input validation preventing malformed requests
+- ✅ Comprehensive error handling and meaningful error messages
+- ✅ GraphQL mutation integration with proper widget formatting
+- ✅ Full test coverage with integration validation
 
 COMMON UPDATE PATTERNS:
 1. State management: Open/close work items
